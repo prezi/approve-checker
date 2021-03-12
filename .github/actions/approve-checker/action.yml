@@ -1,0 +1,6 @@
+name: 'approve-checker'
+description: 'Check for the mandatory approvers'
+author: 'szugyizalan'
+runs:
+  using: 'node12'
+  main: './dist/index.js'

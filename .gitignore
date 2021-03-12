@@ -14,3 +14,6 @@ typings/
 
 # Optional eslint cache
 .eslintcache
+
+.github/actions/approve-checker/*.js
+.github/actions/approve-checker/test/*.js
