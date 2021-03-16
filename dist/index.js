@@ -5855,54 +5855,75 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(374));
 const github = __importStar(__nccwpck_require__(94));
+const Path = __importStar(__nccwpck_require__(622));
 var OwnersKind;
 (function (OwnersKind) {
     OwnersKind["anyone"] = "anyone";
     OwnersKind["list"] = "list";
 })(OwnersKind || (OwnersKind = {}));
-;
+const ownersfile = "OWNERSFILE";
 const run = async () => {
     // core.debug("Hello World");
     // console.log({payload: github.context.payload});
     console.log("Start action");
     try {
-        const [owner, repo] = core.getInput('repository').split("/");
-        const prNum = core.getInput('pr-number');
-        const myToken = core.getInput('myToken');
+        const [owner, repo] = core.getInput("repository").split("/");
+        const prNum = core.getInput("pr-number");
+        const myToken = core.getInput("myToken");
         const octokit = github.getOctokit(myToken);
         console.log(`data ${repo}, ${prNum}`);
-        const response = await octokit.request('GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files', {
+        const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
             owner: owner,
             repo: repo,
-            pull_number: prNum
+            pull_number: prNum,
         });
         for (const r of response.data) {
-            console.log("-", r.filename);
-        }
-        try {
-            const ownersResponse = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
-                owner: owner,
-                repo: repo,
-                path: 'module_a/OWNERSss'
-            });
-            const buff = Buffer.from(ownersResponse.data.content, 'base64');
-            const content = buff.toString('ascii');
-            console.log("Content: ", content);
-        }
-        catch (e) {
-            console.log("error: ", e);
+            const owners = await collectOwners(r.filename, { owner, repo, prNum, octokit });
+            console.log("-", r.filename, ": ", owners);
         }
     }
     catch (error) {
         core.setFailed(error.message);
     }
 };
-// async function collectOwners(path: string): Promise<Owners> {
-// 	return [];
-// }
-// async function getOwnersfileContent(path: string): string | null {
-// 	if
-// }
+async function collectOwners(path, ctx) {
+    const content = await getOwnersfileContent(path, ctx);
+    if (content == null) {
+        return { kind: OwnersKind.anyone };
+    }
+    const buff = Buffer.from(content, "base64");
+    const list = buff.toString("ascii").split("\n");
+    return { kind: OwnersKind.list, list };
+}
+async function getOwnersfileContent(path, ctx) {
+    const dirname = Path.dirname(path);
+    if (dirname == ".") {
+        return await getFileContent(ownersfile, ctx);
+    }
+    else {
+        const ownersfilepath = dirname + "/" + ownersfile;
+        const content = await getFileContent(ownersfilepath, ctx);
+        if (content != null) {
+            return content;
+        }
+        else {
+            return await getOwnersfileContent(ownersfilepath, ctx);
+        }
+    }
+}
+async function getFileContent(path, ctx) {
+    try {
+        const ownersResponse = await ctx.octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
+            owner: ctx.owner,
+            repo: ctx.repo,
+            path: path,
+        });
+        return ownersResponse.data.content;
+    }
+    catch (e) {
+        return null;
+    }
+}
 run();
 exports.default = run;
 
