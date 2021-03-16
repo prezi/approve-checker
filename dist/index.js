@@ -5861,7 +5861,7 @@ var OwnersKind;
     OwnersKind["anyone"] = "anyone";
     OwnersKind["list"] = "list";
 })(OwnersKind || (OwnersKind = {}));
-const ownersfile = "OWNERSFILE";
+const ownersfile = "OWNERS";
 const run = async () => {
     // core.debug("Hello World");
     // console.log({payload: github.context.payload});

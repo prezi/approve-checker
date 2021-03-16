@@ -31,7 +31,7 @@ interface Context {
 	octokit: InstanceType<typeof GitHub>;
 }
 
-const ownersfile = "OWNERSFILE";
+const ownersfile = "OWNERS";
 
 const run = async (): Promise<void> => {
 	// core.debug("Hello World");
