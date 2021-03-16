@@ -84,7 +84,7 @@ async function getOwnersfileContent(path: string, ctx: Context): Promise<string 
 		if (content != null) {
 			return content;
 		} else {
-			return await getOwnersfileContent(ownersfilepath, ctx);
+			return await getOwnersfileContent(dirname, ctx);
 		}
 	}
 }

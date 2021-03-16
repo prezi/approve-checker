@@ -5907,7 +5907,7 @@ async function getOwnersfileContent(path, ctx) {
             return content;
         }
         else {
-            return await getOwnersfileContent(ownersfilepath, ctx);
+            return await getOwnersfileContent(dirname, ctx);
         }
     }
 }
