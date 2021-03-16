@@ -5855,6 +5855,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(374));
 const github = __importStar(__nccwpck_require__(94));
+var OwnersKind;
+(function (OwnersKind) {
+    OwnersKind["anyone"] = "anyone";
+    OwnersKind["list"] = "list";
+})(OwnersKind || (OwnersKind = {}));
+;
 const run = async () => {
     // core.debug("Hello World");
     // console.log({payload: github.context.payload});
@@ -5876,9 +5882,9 @@ const run = async () => {
         const ownersResponse = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
             owner: owner,
             repo: repo,
-            path: 'module_a/OWNERS'
+            path: 'module_a/OWNERSss'
         });
-        // console.log("ownersResponse: ", ownersResponse)
+        console.log("ownersResponse: ", ownersResponse);
         const buff = Buffer.from(ownersResponse.data.content, 'base64');
         const content = buff.toString('ascii');
         console.log("Content: ", content);
@@ -5887,6 +5893,12 @@ const run = async () => {
         core.setFailed(error.message);
     }
 };
+// async function collectOwners(path: string): Promise<Owners> {
+// 	return [];
+// }
+// async function getOwnersfileContent(path: string): string | null {
+// 	if
+// }
 run();
 exports.default = run;
 

@@ -20,7 +20,7 @@ interface OwnersList extends OwnersBase {
 	list: ReadonlyArray<string>;
 }
 
-type Owners = OwnersAnyone | OwnersList;
+export type Owners = OwnersAnyone | OwnersList;
 
 const run = async (): Promise<void> => {
 	// core.debug("Hello World");
@@ -61,13 +61,13 @@ const run = async (): Promise<void> => {
 	}
 };
 
-async function collectOwners(path: string): Promise<Owners> {
-	return [];
-}
+// async function collectOwners(path: string): Promise<Owners> {
+// 	return [];
+// }
 
-async function getOwnersfileContent(path: string): string | null {
-	if
-}
+// async function getOwnersfileContent(path: string): string | null {
+// 	if
+// }
 
 run();
 
