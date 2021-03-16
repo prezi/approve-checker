@@ -5,9 +5,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "ncc build .github/actions/approve-checker/index.ts -o .github/actions/approve-checker/dist",
+    "build": "ncc build index.ts -o ./dist",
     "test": "tsc --noEmit && jest",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts --fix"
   },
   "keywords": [],
   "author": "szugyizalan",
