@@ -1,5 +1,18 @@
 name: 'approve-checker'
 description: 'Check for the mandatory approvers'
+inputs:
+  repository:  # id of input
+    description: 'Repository'
+    required: true
+    default: ''
+  pr-number:  # id of input
+    description: 'Pull request number'
+    required: true
+    default: 1
+  myToken:  # id of input
+    description: 'token'
+    required: true
+    default: ""
 author: 'szugyizalan'
 runs:
   using: 'node12'

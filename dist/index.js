@@ -5879,15 +5879,19 @@ const run = async () => {
         for (const r of response.data) {
             console.log("-", r.filename);
         }
-        const ownersResponse = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
-            owner: owner,
-            repo: repo,
-            path: 'module_a/OWNERSss'
-        });
-        console.log("ownersResponse: ", ownersResponse);
-        const buff = Buffer.from(ownersResponse.data.content, 'base64');
-        const content = buff.toString('ascii');
-        console.log("Content: ", content);
+        try {
+            const ownersResponse = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
+                owner: owner,
+                repo: repo,
+                path: 'module_a/OWNERSss'
+            });
+            const buff = Buffer.from(ownersResponse.data.content, 'base64');
+            const content = buff.toString('ascii');
+            console.log("Content: ", content);
+        }
+        catch (e) {
+            console.log("error: ", e);
+        }
     }
     catch (error) {
         core.setFailed(error.message);
