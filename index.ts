@@ -2,6 +2,25 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import * as OctokitTypes from "@octokit/types";
 
+enum OwnersKind {
+	anyone = "anyone",
+	list = "list"
+};
+
+interface OwnersBase {
+	kind: OwnersKind;
+}
+
+interface OwnersAnyone extends OwnersBase {
+	kind: OwnersKind.anyone;
+}
+
+interface OwnersList extends OwnersBase {
+	kind: OwnersKind.list;
+	list: ReadonlyArray<string>;
+}
+
+type Owners = OwnersAnyone | OwnersList;
 
 const run = async (): Promise<void> => {
 	// core.debug("Hello World");
@@ -28,10 +47,10 @@ const run = async (): Promise<void> => {
 		const ownersResponse: OctokitTypes.OctokitResponse<any> = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
 			owner: owner,
 			repo: repo,
-			path: 'module_a/OWNERS'
+			path: 'module_a/OWNERSss'
 		});
 
-		// console.log("ownersResponse: ", ownersResponse)
+		console.log("ownersResponse: ", ownersResponse)
 		const buff = Buffer.from(ownersResponse.data.content, 'base64');
 		const content = buff.toString('ascii');
 		console.log("Content: ", content);
@@ -41,6 +60,14 @@ const run = async (): Promise<void> => {
 		core.setFailed(error.message);
 	}
 };
+
+async function collectOwners(path: string): Promise<Owners> {
+	return [];
+}
+
+async function getOwnersfileContent(path: string): string | null {
+	if
+}
 
 run();
 
