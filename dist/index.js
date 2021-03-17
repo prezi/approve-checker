@@ -5853,6 +5853,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OwnersManager = exports.createOwnersManager = void 0;
 const core = __importStar(__nccwpck_require__(374));
 const github = __importStar(__nccwpck_require__(94));
 const Path = __importStar(__nccwpck_require__(622));
@@ -5862,6 +5863,10 @@ var OwnersKind;
     OwnersKind["list"] = "list";
 })(OwnersKind || (OwnersKind = {}));
 const ownersfile = "OWNERS";
+function createOwnersManager(owner, repo, prNum, octokit) {
+    return new OwnersManager(owner, repo, prNum, octokit);
+}
+exports.createOwnersManager = createOwnersManager;
 class OwnersManager {
     constructor(owner, repo, prNum, octokit) {
         this.owner = owner;
@@ -5925,6 +5930,7 @@ class OwnersManager {
         }
     }
 }
+exports.OwnersManager = OwnersManager;
 ;
 const run = async () => {
     // core.debug("Hello World");
@@ -5952,7 +5958,7 @@ const run = async () => {
     }
 };
 run();
-exports.default = run;
+// export default createOwnersManager;
 
 
 /***/ }),

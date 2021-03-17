@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "build": "ncc build index.ts -o ./dist",
-    "test": "tsc --noEmit && jest",
+    "test": "tsc && jest",
     "lint": "eslint . --ext .ts --fix"
   },
   "keywords": [],

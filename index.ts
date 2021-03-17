@@ -4,7 +4,7 @@ import {GitHub} from "@actions/github/lib/utils";
 import * as OctokitTypes from "@octokit/types";
 import * as Path from "path";
 
-enum OwnersKind {
+export enum OwnersKind {
 	anyone = "anyone",
 	list = "list",
 }
@@ -26,7 +26,7 @@ export type Owners = OwnersAnyone | OwnersList;
 
 const ownersfile = "OWNERS";
 
-class OwnersManager {
+export class OwnersManager {
 	private pathOwnersCache: Map<string, ReadonlyArray<string>>;
 	public constructor(
 		private owner: string,
@@ -40,7 +40,7 @@ class OwnersManager {
 
 	public async collectOwners(path: string): Promise<Owners> {
 		const content = await this.getOwnersfileContent(path, path);
-		if (content == null) {
+		if (content == null || content.length === 0) {
 			return {kind: OwnersKind.anyone};
 		}
 		return {kind: OwnersKind.list, list: content};
@@ -49,7 +49,11 @@ class OwnersManager {
 	private async getOwnersfileContent(path: string, origPath: string): Promise<ReadonlyArray<string> | null> {
 		const dirname = Path.dirname(path);
 		if (dirname == ".") {
-			return await this.getFileContent(ownersfile, origPath);
+			const content = await this.getFileContent(ownersfile, origPath);
+			if (content === null) {
+				this.saveListInCache(ownersfile, origPath, []);
+			}
+			return content;
 		} else {
 			const ownersfilepath = dirname + "/" + ownersfile;
 			const content = await this.getFileContent(ownersfilepath, origPath);
@@ -65,7 +69,6 @@ class OwnersManager {
 	private async getFileContent(path: string, origPath: string): Promise<ReadonlyArray<string> | null> {
 		const cachedValue = this.pathOwnersCache.get(path);
 		if (cachedValue != null) {
-			console.log("Found in cache:", path);
 			return cachedValue;
 		}
 
@@ -91,7 +94,6 @@ class OwnersManager {
 	private saveListInCache(pathWherOwnersFound: string, origPath: string, list: ReadonlyArray<string>) {
 		const dirname = Path.dirname(origPath);
 		const ownersPath = dirname === "." ? ownersfile : dirname + "/" + ownersfile;
-		console.log("save in cache: ", ownersPath)
 		this.pathOwnersCache.set(ownersPath, list)
 		if (pathWherOwnersFound !== ownersPath) {
 			this.saveListInCache(pathWherOwnersFound, dirname, list);
@@ -135,4 +137,3 @@ const run = async (): Promise<void> => {
 
 run();
 
-export default run;
