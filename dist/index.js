@@ -5862,6 +5862,70 @@ var OwnersKind;
     OwnersKind["list"] = "list";
 })(OwnersKind || (OwnersKind = {}));
 const ownersfile = "OWNERS";
+class OwnersManager {
+    constructor(owner, repo, prNum, octokit) {
+        this.owner = owner;
+        this.repo = repo;
+        this.prNum = prNum;
+        this.octokit = octokit;
+        console.log(this.prNum);
+        this.pathOwnersCache = new Map();
+    }
+    async collectOwners(path) {
+        const content = await this.getOwnersfileContent(path, path);
+        if (content == null) {
+            return { kind: OwnersKind.anyone };
+        }
+        return { kind: OwnersKind.list, list: content };
+    }
+    async getOwnersfileContent(path, origPath) {
+        const dirname = Path.dirname(path);
+        if (dirname == ".") {
+            return await this.getFileContent(ownersfile, origPath);
+        }
+        else {
+            const ownersfilepath = dirname + "/" + ownersfile;
+            const content = await this.getFileContent(ownersfilepath, origPath);
+            if (content != null) {
+                return content;
+            }
+            else {
+                return await this.getOwnersfileContent(dirname, origPath);
+            }
+        }
+    }
+    async getFileContent(path, origPath) {
+        const cachedValue = this.pathOwnersCache.get(path);
+        if (cachedValue != null) {
+            console.log("Found in cache:", path);
+            return cachedValue;
+        }
+        try {
+            const ownersResponse = await this.octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
+                owner: this.owner,
+                repo: this.repo,
+                path: path,
+            });
+            const buff = Buffer.from(ownersResponse.data.content, "base64");
+            const list = buff.toString("ascii").split("\n");
+            this.saveListInCache(path, origPath, list);
+            return list;
+        }
+        catch (e) {
+            return null;
+        }
+    }
+    saveListInCache(pathWherOwnersFound, origPath, list) {
+        const dirname = Path.dirname(origPath);
+        const ownersPath = dirname === "." ? ownersfile : dirname + "/" + ownersfile;
+        console.log("save in cache: ", ownersPath);
+        this.pathOwnersCache.set(ownersPath, list);
+        if (pathWherOwnersFound !== ownersPath) {
+            this.saveListInCache(pathWherOwnersFound, dirname, list);
+        }
+    }
+}
+;
 const run = async () => {
     // core.debug("Hello World");
     // console.log({payload: github.context.payload});
@@ -5871,6 +5935,7 @@ const run = async () => {
         const prNum = core.getInput("pr-number");
         const myToken = core.getInput("myToken");
         const octokit = github.getOctokit(myToken);
+        const ownersManager = new OwnersManager(owner, repo, prNum, octokit);
         console.log(`data ${repo}, ${prNum}`);
         const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
             owner: owner,
@@ -5878,7 +5943,7 @@ const run = async () => {
             pull_number: prNum,
         });
         for (const r of response.data) {
-            const owners = await collectOwners(r.filename, { owner, repo, prNum, octokit });
+            const owners = await ownersManager.collectOwners(r.filename);
             console.log("-", r.filename, ": ", owners);
         }
     }
@@ -5886,44 +5951,6 @@ const run = async () => {
         core.setFailed(error.message);
     }
 };
-async function collectOwners(path, ctx) {
-    const content = await getOwnersfileContent(path, ctx);
-    if (content == null) {
-        return { kind: OwnersKind.anyone };
-    }
-    const buff = Buffer.from(content, "base64");
-    const list = buff.toString("ascii").split("\n");
-    return { kind: OwnersKind.list, list };
-}
-async function getOwnersfileContent(path, ctx) {
-    const dirname = Path.dirname(path);
-    if (dirname == ".") {
-        return await getFileContent(ownersfile, ctx);
-    }
-    else {
-        const ownersfilepath = dirname + "/" + ownersfile;
-        const content = await getFileContent(ownersfilepath, ctx);
-        if (content != null) {
-            return content;
-        }
-        else {
-            return await getOwnersfileContent(dirname, ctx);
-        }
-    }
-}
-async function getFileContent(path, ctx) {
-    try {
-        const ownersResponse = await ctx.octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
-            owner: ctx.owner,
-            repo: ctx.repo,
-            path: path,
-        });
-        return ownersResponse.data.content;
-    }
-    catch (e) {
-        return null;
-    }
-}
 run();
 exports.default = run;
 
