@@ -5828,7 +5828,7 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 995:
+/***/ 190:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -5872,10 +5872,13 @@ class OwnersManager {
     }
     async collectOwners(path) {
         const content = await this.getOwnersfileContent(path, path);
-        if (content == null || content.length === 0) {
-            return { kind: OwnersKind.anyone };
+        if (content == null) {
+            return { owners: { kind: OwnersKind.anyone }, path: "/" };
         }
-        return { kind: OwnersKind.list, list: content };
+        if (content.owners.length === 0) {
+            return { owners: { kind: OwnersKind.anyone }, path: content.path };
+        }
+        return { owners: { kind: OwnersKind.list, list: content.owners }, path: content.path };
     }
     async getOwnersfileContent(path, origPath) {
         const dirname = Path.dirname(path);
@@ -5911,7 +5914,7 @@ class OwnersManager {
             const buff = Buffer.from(ownersResponse.data.content, "base64");
             const list = buff.toString("ascii").split("\n");
             this.saveListInCache(path, origPath, list);
-            return list;
+            return { owners: list, path };
         }
         catch (e) {
             return null;
@@ -5920,7 +5923,7 @@ class OwnersManager {
     saveListInCache(pathWherOwnersFound, origPath, list) {
         const dirname = Path.dirname(origPath);
         const ownersPath = dirname === "." ? ownersfile : dirname + "/" + ownersfile;
-        this.pathOwnersCache.set(ownersPath, list);
+        this.pathOwnersCache.set(ownersPath, { owners: list, path: pathWherOwnersFound });
         if (pathWherOwnersFound !== ownersPath) {
             this.saveListInCache(pathWherOwnersFound, dirname, list);
         }
@@ -5959,7 +5962,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(374));
 const github = __importStar(__nccwpck_require__(94));
-const OwnersManager_1 = __nccwpck_require__(995);
+const OwnersManager_1 = __nccwpck_require__(190);
 const run = async () => {
     // core.debug("Hello World");
     // console.log({payload: github.context.payload});
@@ -5976,10 +5979,16 @@ const run = async () => {
             repo: repo,
             pull_number: prNum,
         });
+        const moduleOwnersMap = new Map();
         for (const r of response.data) {
-            const owners = await ownersManager.collectOwners(r.filename);
-            console.log("-", r.filename, ": ", owners);
+            const result = await ownersManager.collectOwners(r.filename);
+            moduleOwnersMap.set(result.path, result.owners);
+            console.log("-", r.filename, ": ", result.owners.kind === OwnersManager_1.OwnersKind.list ? result.owners.list : "anyone");
         }
+        console.log("module owners map: ");
+        moduleOwnersMap.forEach((value, key) => {
+            console.log(key, value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone");
+        });
     }
     catch (error) {
         core.setFailed(error.message);
