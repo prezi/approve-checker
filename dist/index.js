@@ -5828,7 +5828,7 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 836:
+/***/ 995:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -5853,20 +5853,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.OwnersManager = exports.createOwnersManager = void 0;
-const core = __importStar(__nccwpck_require__(374));
-const github = __importStar(__nccwpck_require__(94));
+exports.OwnersManager = exports.OwnersKind = void 0;
 const Path = __importStar(__nccwpck_require__(622));
 var OwnersKind;
 (function (OwnersKind) {
     OwnersKind["anyone"] = "anyone";
     OwnersKind["list"] = "list";
-})(OwnersKind || (OwnersKind = {}));
+})(OwnersKind = exports.OwnersKind || (exports.OwnersKind = {}));
 const ownersfile = "OWNERS";
-function createOwnersManager(owner, repo, prNum, octokit) {
-    return new OwnersManager(owner, repo, prNum, octokit);
-}
-exports.createOwnersManager = createOwnersManager;
 class OwnersManager {
     constructor(owner, repo, prNum, octokit) {
         this.owner = owner;
@@ -5878,7 +5872,7 @@ class OwnersManager {
     }
     async collectOwners(path) {
         const content = await this.getOwnersfileContent(path, path);
-        if (content == null) {
+        if (content == null || content.length === 0) {
             return { kind: OwnersKind.anyone };
         }
         return { kind: OwnersKind.list, list: content };
@@ -5886,7 +5880,11 @@ class OwnersManager {
     async getOwnersfileContent(path, origPath) {
         const dirname = Path.dirname(path);
         if (dirname == ".") {
-            return await this.getFileContent(ownersfile, origPath);
+            const content = await this.getFileContent(ownersfile, origPath);
+            if (content === null) {
+                this.saveListInCache(ownersfile, origPath, []);
+            }
+            return content;
         }
         else {
             const ownersfilepath = dirname + "/" + ownersfile;
@@ -5902,7 +5900,6 @@ class OwnersManager {
     async getFileContent(path, origPath) {
         const cachedValue = this.pathOwnersCache.get(path);
         if (cachedValue != null) {
-            console.log("Found in cache:", path);
             return cachedValue;
         }
         try {
@@ -5923,7 +5920,6 @@ class OwnersManager {
     saveListInCache(pathWherOwnersFound, origPath, list) {
         const dirname = Path.dirname(origPath);
         const ownersPath = dirname === "." ? ownersfile : dirname + "/" + ownersfile;
-        console.log("save in cache: ", ownersPath);
         this.pathOwnersCache.set(ownersPath, list);
         if (pathWherOwnersFound !== ownersPath) {
             this.saveListInCache(pathWherOwnersFound, dirname, list);
@@ -5932,6 +5928,38 @@ class OwnersManager {
 }
 exports.OwnersManager = OwnersManager;
 ;
+
+
+/***/ }),
+
+/***/ 806:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const core = __importStar(__nccwpck_require__(374));
+const github = __importStar(__nccwpck_require__(94));
+const OwnersManager_1 = __nccwpck_require__(995);
 const run = async () => {
     // core.debug("Hello World");
     // console.log({payload: github.context.payload});
@@ -5941,7 +5969,7 @@ const run = async () => {
         const prNum = core.getInput("pr-number");
         const myToken = core.getInput("myToken");
         const octokit = github.getOctokit(myToken);
-        const ownersManager = new OwnersManager(owner, repo, prNum, octokit);
+        const ownersManager = new OwnersManager_1.OwnersManager(owner, repo, prNum, octokit);
         console.log(`data ${repo}, ${prNum}`);
         const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
             owner: owner,
@@ -5958,7 +5986,6 @@ const run = async () => {
     }
 };
 run();
-// export default createOwnersManager;
 
 
 /***/ }),
@@ -6113,6 +6140,6 @@ module.exports = require("zlib");;
 /******/ 	// module exports must be returned from runtime so entry inlining is disabled
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
-/******/ 	return __nccwpck_require__(836);
+/******/ 	return __nccwpck_require__(806);
 /******/ })()
 ;

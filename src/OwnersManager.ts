@@ -1,5 +1,3 @@
-import * as core from "@actions/core";
-import * as github from "@actions/github";
 import {GitHub} from "@actions/github/lib/utils";
 import * as OctokitTypes from "@octokit/types";
 import * as Path from "path";
@@ -23,11 +21,20 @@ interface OwnersList extends OwnersBase {
 }
 
 export type Owners = OwnersAnyone | OwnersList;
+export interface OwnersResult {
+	owners: Owners;
+	path: string;
+}
+
+interface OwnersData {
+	owners: ReadonlyArray<string>;
+	path: string;
+}
 
 const ownersfile = "OWNERS";
 
 export class OwnersManager {
-	private pathOwnersCache: Map<string, ReadonlyArray<string>>;
+	private pathOwnersCache: Map<string, OwnersData>;
 	public constructor(
 		private owner: string,
 		private repo: string,
@@ -35,18 +42,23 @@ export class OwnersManager {
 		private octokit: InstanceType<typeof GitHub>
 	) {
 		console.log(this.prNum);
-		this.pathOwnersCache = new Map<string, ReadonlyArray<string>>();
+		this.pathOwnersCache = new Map<string, OwnersData>();
 	}
 
-	public async collectOwners(path: string): Promise<Owners> {
+	public async collectOwners(path: string): Promise<OwnersResult> {
 		const content = await this.getOwnersfileContent(path, path);
-		if (content == null || content.length === 0) {
-			return {kind: OwnersKind.anyone};
+		if (content == null) {
+			return {owners: {kind: OwnersKind.anyone}, path: "/"};
 		}
-		return {kind: OwnersKind.list, list: content};
+
+		if (content.owners.length === 0) {
+			return {owners: {kind: OwnersKind.anyone}, path: content.path};
+		}
+		
+		return {owners: {kind: OwnersKind.list, list: content.owners}, path: content.path};
 	}
 
-	private async getOwnersfileContent(path: string, origPath: string): Promise<ReadonlyArray<string> | null> {
+	private async getOwnersfileContent(path: string, origPath: string): Promise<OwnersData | null> {
 		const dirname = Path.dirname(path);
 		if (dirname == ".") {
 			const content = await this.getFileContent(ownersfile, origPath);
@@ -66,7 +78,7 @@ export class OwnersManager {
 		}
 	}
 
-	private async getFileContent(path: string, origPath: string): Promise<ReadonlyArray<string> | null> {
+	private async getFileContent(path: string, origPath: string): Promise<OwnersData | null> {
 		const cachedValue = this.pathOwnersCache.get(path);
 		if (cachedValue != null) {
 			return cachedValue;
@@ -85,7 +97,7 @@ export class OwnersManager {
 			const buff = Buffer.from(ownersResponse.data.content, "base64");
 			const list = buff.toString("ascii").split("\n");
 			this.saveListInCache(path, origPath, list);
-			return list;
+			return {owners: list, path};
 		} catch (e) {
 			return null;
 		}
@@ -94,46 +106,10 @@ export class OwnersManager {
 	private saveListInCache(pathWherOwnersFound: string, origPath: string, list: ReadonlyArray<string>) {
 		const dirname = Path.dirname(origPath);
 		const ownersPath = dirname === "." ? ownersfile : dirname + "/" + ownersfile;
-		this.pathOwnersCache.set(ownersPath, list)
+		this.pathOwnersCache.set(ownersPath, {owners: list, path: pathWherOwnersFound})
 		if (pathWherOwnersFound !== ownersPath) {
 			this.saveListInCache(pathWherOwnersFound, dirname, list);
 		}
 	}
 
 };
-
-const run = async (): Promise<void> => {
-	// core.debug("Hello World");
-	// console.log({payload: github.context.payload});
-
-	console.log("Start action");
-	try {
-		const [owner, repo] = core.getInput("repository").split("/");
-		const prNum = core.getInput("pr-number");
-		const myToken = core.getInput("myToken");
-		const octokit = github.getOctokit(myToken);
-		const ownersManager = new OwnersManager(owner, repo, prNum, octokit);
-		console.log(`data ${repo}, ${prNum}`);
-
-		const response = await octokit.request(
-			"GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files",
-			{
-				owner: owner,
-				repo: repo,
-				pull_number: prNum,
-			},
-		);
-
-		for (const r of response.data) {
-			const owners = await ownersManager.collectOwners(r.filename);
-			console.log("-", r.filename, ": ", owners);
-		}
-	} catch (error) {
-		core.setFailed(error.message);
-	}
-};
-
-
-
-run();
-
