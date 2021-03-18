@@ -1,6 +1,37 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
+import {GitHub} from "@actions/github/lib/utils";
 import {Owners, OwnersKind, OwnersManager} from "./OwnersManager";
+
+async function collectApprovers(
+	owner: string,
+	repo: string,
+	prNum: string,
+	octokit: InstanceType<typeof GitHub>,
+): Promise<ReadonlyArray<string>> {
+	const reviews = await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", {
+		owner: owner,
+		repo: repo,
+		pull_number: +prNum,
+	});
+
+	const emails = await Promise.all(
+		reviews.data.map(async (review) => {
+			const username = review.user?.login;
+			if (username == null) {
+				return Promise.resolve(null);
+			}
+
+			const user = await octokit.request("GET /users/{username}", {
+				username: username,
+			});
+
+			return Promise.resolve(user.data.email);
+		}),
+	);
+
+	return emails.filter((e) => e != null) as ReadonlyArray<string>;
+}
 
 const run = async (): Promise<void> => {
 	// core.debug("Hello World");
@@ -32,9 +63,21 @@ const run = async (): Promise<void> => {
 			console.log("-", r.filename, ": ", result.owners.kind === OwnersKind.list ? result.owners.list : "anyone");
 		}
 
-		let comment = "";
+		const approvers = await collectApprovers(owner, repo, prNum, octokit);
+
+		const requireApproveModules: string[] = [];
 		moduleOwnersMap.forEach((value, key) => {
-			comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
+			if (value.kind === OwnersKind.list && value.list.every((owner) => approvers.indexOf(owner) === -1)) {
+				requireApproveModules.push(key);
+			}
+		});
+
+		let comment = "";
+		requireApproveModules.forEach((key) => {
+			const value = moduleOwnersMap.get(key);
+			if (value != null) {
+				comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
+			}
 		});
 
 		await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {

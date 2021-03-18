@@ -5963,6 +5963,24 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(374));
 const github = __importStar(__nccwpck_require__(94));
 const OwnersManager_1 = __nccwpck_require__(190);
+async function collectApprovers(owner, repo, prNum, octokit) {
+    const reviews = await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", {
+        owner: owner,
+        repo: repo,
+        pull_number: +prNum,
+    });
+    const emails = await Promise.all(reviews.data.map(async (review) => {
+        const username = review.user?.login;
+        if (username == null) {
+            return Promise.resolve(null);
+        }
+        const user = await octokit.request("GET /users/{username}", {
+            username: username,
+        });
+        return Promise.resolve(user.data.email);
+    }));
+    return emails.filter((e) => e != null);
+}
 const run = async () => {
     // core.debug("Hello World");
     // console.log({payload: github.context.payload});
@@ -5985,9 +6003,19 @@ const run = async () => {
             moduleOwnersMap.set(result.path, result.owners);
             console.log("-", r.filename, ": ", result.owners.kind === OwnersManager_1.OwnersKind.list ? result.owners.list : "anyone");
         }
-        let comment = "";
+        const approvers = await collectApprovers(owner, repo, prNum, octokit);
+        const requireApproveModules = [];
         moduleOwnersMap.forEach((value, key) => {
-            comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
+            if (value.kind === OwnersManager_1.OwnersKind.list && value.list.every((owner) => approvers.indexOf(owner) === -1)) {
+                requireApproveModules.push(key);
+            }
+        });
+        let comment = "";
+        requireApproveModules.forEach((key) => {
+            const value = moduleOwnersMap.get(key);
+            if (value != null) {
+                comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
+            }
         });
         await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
             owner: owner,
