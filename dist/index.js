@@ -5970,7 +5970,7 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         pull_number: +prNum,
     });
     const emails = await Promise.all(reviews.data.map(async (review) => {
-        const username = review.user?.login;
+        const username = review.user != null ? review.user.login : null;
         if (username == null) {
             return Promise.resolve(null);
         }

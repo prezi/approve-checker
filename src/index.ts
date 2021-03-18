@@ -17,7 +17,7 @@ async function collectApprovers(
 
 	const emails = await Promise.all(
 		reviews.data.map(async (review) => {
-			const username = review.user?.login;
+			const username = review.user != null ? review.user.login : null;
 			if (username == null) {
 				return Promise.resolve(null);
 			}
