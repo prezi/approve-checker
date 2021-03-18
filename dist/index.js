@@ -5988,10 +5988,11 @@ const run = async () => {
     try {
         const [owner, repo] = core.getInput("repository").split("/");
         const prNum = core.getInput("pr-number");
+        const ref = core.getInput("ref");
         const myToken = core.getInput("myToken");
         const octokit = github.getOctokit(myToken);
         const ownersManager = new OwnersManager_1.OwnersManager(owner, repo, prNum, octokit);
-        console.log(`data ${repo}, ${prNum}`);
+        console.log(`data ${repo}, ${prNum}, ${ref}`);
         const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
             owner: owner,
             repo: repo,
