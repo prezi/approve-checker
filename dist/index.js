@@ -5985,9 +5985,15 @@ const run = async () => {
             moduleOwnersMap.set(result.path, result.owners);
             console.log("-", r.filename, ": ", result.owners.kind === OwnersManager_1.OwnersKind.list ? result.owners.list : "anyone");
         }
-        console.log("module owners map: ");
+        let comment = "";
         moduleOwnersMap.forEach((value, key) => {
-            console.log(key, value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone");
+            comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
+        });
+        await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+            owner: owner,
+            repo: repo,
+            issue_number: +prNum,
+            body: comment,
         });
     }
     catch (error) {

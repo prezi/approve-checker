@@ -1,9 +1,9 @@
-import { OwnersManager, OwnersKind, Owners } from "../src/OwnersManager";
+import {OwnersManager, OwnersKind, Owners} from "../src/OwnersManager";
 
 interface Result {
 	data: {
 		content: string;
-	}
+	};
 }
 
 const userA = "userA";
@@ -13,32 +13,28 @@ const userAuserBBase64 = "dXNlckEKdXNlckI=";
 
 const ownerA = {
 	kind: OwnersKind.list,
-	list: [userA]
+	list: [userA],
 };
 
 const ownerAownerB: Owners = {
 	kind: OwnersKind.list,
-	list: [userA, userB]
+	list: [userA, userB],
 };
 
 const noOwner: Owners = {
-	kind: OwnersKind.anyone
+	kind: OwnersKind.anyone,
 };
 
 const Test1 = new Map<string, Result>([
 	["OWNERS", {data: {content: userABase64}}],
-	["moduleA/OWNERS", {data: {content: userAuserBBase64}}]
+	["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
 ]);
 
-const Test2 = new Map<string, Result>([
-	["moduleA/OWNERS", {data: {content: userAuserBBase64}}]
-]);
+const Test2 = new Map<string, Result>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]);
 class OctokitMock {
 	private cnt = 0;
-	constructor(private testData: Map<string, Result>) {
-
-	};
-	public request(_: string, param: {owner: string; repo: string; path: string}): Result | undefined{
+	constructor(private testData: Map<string, Result>) {}
+	public request(_: string, param: {owner: string; repo: string; path: string}): Result | undefined {
 		++this.cnt;
 		return this.testData.get(param.path);
 	}

@@ -1,7 +1,6 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { Owners, OwnersKind, OwnersManager } from "./OwnersManager"
-
+import {Owners, OwnersKind, OwnersManager} from "./OwnersManager";
 
 const run = async (): Promise<void> => {
 	// core.debug("Hello World");
@@ -29,20 +28,24 @@ const run = async (): Promise<void> => {
 
 		for (const r of response.data) {
 			const result = await ownersManager.collectOwners(r.filename);
-			moduleOwnersMap.set(result.path, result.owners)
+			moduleOwnersMap.set(result.path, result.owners);
 			console.log("-", r.filename, ": ", result.owners.kind === OwnersKind.list ? result.owners.list : "anyone");
 		}
 
-		console.log("module owners map: ")
+		let comment = "";
 		moduleOwnersMap.forEach((value, key) => {
-			console.log(key, value.kind === OwnersKind.list ? value.list : "anyone");
-		})
+			comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
+		});
+
+		await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+			owner: owner,
+			repo: repo,
+			issue_number: +prNum,
+			body: comment,
+		});
 	} catch (error) {
 		core.setFailed(error.message);
 	}
 };
 
-
-
 run();
-

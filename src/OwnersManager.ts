@@ -39,7 +39,7 @@ export class OwnersManager {
 		private owner: string,
 		private repo: string,
 		private prNum: string,
-		private octokit: InstanceType<typeof GitHub>
+		private octokit: InstanceType<typeof GitHub>,
 	) {
 		console.log(this.prNum);
 		this.pathOwnersCache = new Map<string, OwnersData>();
@@ -54,7 +54,7 @@ export class OwnersManager {
 		if (content.owners.length === 0) {
 			return {owners: {kind: OwnersKind.anyone}, path: content.path};
 		}
-		
+
 		return {owners: {kind: OwnersKind.list, list: content.owners}, path: content.path};
 	}
 
@@ -106,10 +106,9 @@ export class OwnersManager {
 	private saveListInCache(pathWherOwnersFound: string, origPath: string, list: ReadonlyArray<string>) {
 		const dirname = Path.dirname(origPath);
 		const ownersPath = dirname === "." ? ownersfile : dirname + "/" + ownersfile;
-		this.pathOwnersCache.set(ownersPath, {owners: list, path: pathWherOwnersFound})
+		this.pathOwnersCache.set(ownersPath, {owners: list, path: pathWherOwnersFound});
 		if (pathWherOwnersFound !== ownersPath) {
 			this.saveListInCache(pathWherOwnersFound, dirname, list);
 		}
 	}
-
-};
+}
