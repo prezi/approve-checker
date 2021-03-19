@@ -21,6 +21,7 @@ async function collectApprovers(
 			.filter(review => review.state === "APPROVED")
 			.map(async (review) => {
 				const username = review.user != null ? review.user.login : null;
+				console.log("xxx finding email: ", username);
 				if (username == null) {
 					return Promise.resolve(null);
 				}
@@ -29,6 +30,7 @@ async function collectApprovers(
 					username: username,
 				});
 
+				console.log("xxx email found: ", user.data.email);
 				return Promise.resolve(user.data.email);
 			}),
 	);
