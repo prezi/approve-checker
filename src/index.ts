@@ -35,7 +35,7 @@ async function collectApprovers(
 
 const run = async (): Promise<void> => {
 	// core.debug("Hello World");
-	// console.log({payload: github.context.payload});
+	console.log({payload: github.context.payload});
 
 	console.log("Start action");
 	try {
