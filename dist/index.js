@@ -5969,6 +5969,7 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         repo: repo,
         pull_number: +prNum,
     });
+    console.log("xxx reviewers: ", reviews.data.map(r => r.user != null ? r.user.login : "senki"));
     const emails = await Promise.all(reviews.data
         .filter(review => review.state === "APPROVED")
         .map(async (review) => {
@@ -6007,8 +6008,10 @@ const run = async () => {
             console.log("-", r.filename, ": ", result.owners.kind === OwnersManager_1.OwnersKind.list ? result.owners.list : "anyone");
         }
         const approvers = await collectApprovers(owner, repo, prNum, octokit);
+        console.log("xxx approve emails: ", approvers);
         const requireApproveModules = [];
         moduleOwnersMap.forEach((value, key) => {
+            console.log("xxx: -- ", key, value);
             if (value.kind === OwnersManager_1.OwnersKind.list && value.list.every((owner) => approvers.indexOf(owner) === -1)) {
                 requireApproveModules.push(key);
             }

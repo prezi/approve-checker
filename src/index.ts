@@ -15,6 +15,7 @@ async function collectApprovers(
 		pull_number: +prNum,
 	});
 
+	console.log("xxx reviewers: ", reviews.data.map(r => r.user != null ? r.user.login : "senki"))
 	const emails = await Promise.all(
 		reviews.data
 			.filter(review => review.state === "APPROVED")
@@ -66,9 +67,11 @@ const run = async (): Promise<void> => {
 		}
 
 		const approvers = await collectApprovers(owner, repo, prNum, octokit);
+		console.log("xxx approve emails: ", approvers)
 
 		const requireApproveModules: string[] = [];
 		moduleOwnersMap.forEach((value, key) => {
+			console.log("xxx: -- ", key, value)
 			if (value.kind === OwnersKind.list && value.list.every((owner) => approvers.indexOf(owner) === -1)) {
 				requireApproveModules.push(key);
 			}
