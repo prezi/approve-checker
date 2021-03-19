@@ -5983,7 +5983,7 @@ async function collectApprovers(owner, repo, prNum, octokit) {
 }
 const run = async () => {
     // core.debug("Hello World");
-    console.log({ payload: github.context.payload });
+    console.log(github.context.payload.pull_request?.head);
     console.log("Start action");
     try {
         const [owner, repo] = core.getInput("repository").split("/");
