@@ -5970,21 +5970,32 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         pull_number: +prNum,
     });
     console.log("xxx reviewers: ", reviews.data.map(r => r.user != null ? r.user.login : "senki"));
-    const emails = await Promise.all(reviews.data
+    return reviews.data
         .filter(review => review.state === "APPROVED")
-        .map(async (review) => {
-        const username = review.user != null ? review.user.login : null;
-        console.log("xxx finding email: ", username);
-        if (username == null) {
-            return Promise.resolve(null);
-        }
-        const user = await octokit.request("GET /users/{username}", {
-            username: username,
-        });
-        console.log("xxx email found: ", user.data.email);
-        return Promise.resolve(user.data.email);
-    }));
-    return emails.filter((e) => e != null);
+        .map(review => review.user != null ? review.user.login : null)
+        .filter(res => res != null);
+    /*
+    const emails = await Promise.all(
+        reviews.data
+            .filter(review => review.state === "APPROVED")
+            .map(async (review) => {
+                const username = review.user != null ? review.user.login : null;
+                console.log("xxx finding email: ", username);
+                if (username == null) {
+                    return Promise.resolve(null);
+                }
+
+                const user = await octokit.request("GET /users/{username}", {
+                    username: username,
+                });
+
+                console.log("xxx email found: ", user.data.email);
+                return Promise.resolve(user.data.email);
+            }),
+    );
+
+    return emails.filter((e) => e != null) as ReadonlyArray<string>;
+    */
 }
 const run = async () => {
     // core.debug("Hello World");
