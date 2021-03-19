@@ -5969,7 +5969,9 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         repo: repo,
         pull_number: +prNum,
     });
-    const emails = await Promise.all(reviews.data.map(async (review) => {
+    const emails = await Promise.all(reviews.data
+        .filter(review => review.state === "APPROVED")
+        .map(async (review) => {
         const username = review.user != null ? review.user.login : null;
         if (username == null) {
             return Promise.resolve(null);
@@ -5987,12 +5989,12 @@ const run = async () => {
     try {
         const [owner, repo] = core.getInput("repository").split("/");
         const prNum = core.getInput("pr-number");
-        const ref = core.getInput("ref");
         const myToken = core.getInput("myToken");
         const octokit = github.getOctokit(myToken);
         const ownersManager = new OwnersManager_1.OwnersManager(owner, repo, prNum, octokit);
-        const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
-        console.log(`data ${repo}, ${prNum}, ${ref}`);
+        const headCommitSha = github.context.payload.pull_request != null
+            ? github.context.payload.pull_request.head.sha
+            : null;
         const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
             owner: owner,
             repo: repo,

@@ -9,10 +9,6 @@ inputs:
     description: 'Pull request number'
     required: true
     default: 1
-  ref:  # id of input
-    description: 'ref'
-    required: true
-    default: ""
   myToken:  # id of input
     description: 'token'
     required: true
