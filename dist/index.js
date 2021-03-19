@@ -5983,7 +5983,6 @@ async function collectApprovers(owner, repo, prNum, octokit) {
 }
 const run = async () => {
     // core.debug("Hello World");
-    console.log(github.context.payload.pull_request != null ? github.context.payload.pull_request.head : "semmi");
     console.log("Start action");
     try {
         const [owner, repo] = core.getInput("repository").split("/");
@@ -5992,6 +5991,7 @@ const run = async () => {
         const myToken = core.getInput("myToken");
         const octokit = github.getOctokit(myToken);
         const ownersManager = new OwnersManager_1.OwnersManager(owner, repo, prNum, octokit);
+        const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
         console.log(`data ${repo}, ${prNum}, ${ref}`);
         const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
             owner: owner,
@@ -6011,19 +6011,35 @@ const run = async () => {
                 requireApproveModules.push(key);
             }
         });
-        let comment = "";
-        requireApproveModules.forEach((key) => {
-            const value = moduleOwnersMap.get(key);
-            if (value != null) {
-                comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
-            }
-        });
-        await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
-            owner: owner,
-            repo: repo,
-            issue_number: +prNum,
-            body: comment,
-        });
+        if (requireApproveModules.length > 0) {
+            let comment = "";
+            requireApproveModules.forEach((key) => {
+                const value = moduleOwnersMap.get(key);
+                if (value != null) {
+                    comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
+                }
+            });
+            await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
+                owner: owner,
+                repo: repo,
+                sha: headCommitSha,
+                state: "pending",
+            });
+            await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+                owner: owner,
+                repo: repo,
+                issue_number: +prNum,
+                body: comment,
+            });
+        }
+        else {
+            await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
+                owner: owner,
+                repo: repo,
+                sha: headCommitSha,
+                state: "success",
+            });
+        }
     }
     catch (error) {
         core.setFailed(error.message);

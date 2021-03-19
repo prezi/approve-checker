@@ -35,8 +35,6 @@ async function collectApprovers(
 
 const run = async (): Promise<void> => {
 	// core.debug("Hello World");
-	console.log(github.context.payload.pull_request != null ? github.context.payload.pull_request.head : "semmi");
-
 	console.log("Start action");
 	try {
 		const [owner, repo] = core.getInput("repository").split("/");
@@ -45,6 +43,8 @@ const run = async (): Promise<void> => {
 		const myToken = core.getInput("myToken");
 		const octokit = github.getOctokit(myToken);
 		const ownersManager = new OwnersManager(owner, repo, prNum, octokit);
+		const headCommitSha =
+			github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
 		console.log(`data ${repo}, ${prNum}, ${ref}`);
 
 		const response = await octokit.request(
@@ -73,20 +73,36 @@ const run = async (): Promise<void> => {
 			}
 		});
 
-		let comment = "";
-		requireApproveModules.forEach((key) => {
-			const value = moduleOwnersMap.get(key);
-			if (value != null) {
-				comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
-			}
-		});
+		if (requireApproveModules.length > 0) {
+			let comment = "";
+			requireApproveModules.forEach((key) => {
+				const value = moduleOwnersMap.get(key);
+				if (value != null) {
+					comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
+				}
+			});
 
-		await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
-			owner: owner,
-			repo: repo,
-			issue_number: +prNum,
-			body: comment,
-		});
+			await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
+				owner: owner,
+				repo: repo,
+				sha: headCommitSha,
+				state: "pending",
+			});
+
+			await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+				owner: owner,
+				repo: repo,
+				issue_number: +prNum,
+				body: comment,
+			});
+		} else {
+			await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
+				owner: owner,
+				repo: repo,
+				sha: headCommitSha,
+				state: "success",
+			});
+		}
 	} catch (error) {
 		core.setFailed(error.message);
 	}
