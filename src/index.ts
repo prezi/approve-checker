@@ -15,11 +15,10 @@ async function collectApprovers(
 		pull_number: +prNum,
 	});
 
-	console.log("xxx reviewers: ", reviews.data.map(r => r.user != null ? r.user.login : "senki"))
 	return reviews.data
-		.filter(review => review.state === "APPROVED")
-		.map(review => review.user != null ? review.user.login : null)
-		.filter(res => res != null) as ReadonlyArray<string>;
+		.filter((review) => review.state === "APPROVED")
+		.map((review) => (review.user != null ? review.user.login : null))
+		.filter((res) => res != null) as ReadonlyArray<string>;
 	/*
 	const emails = await Promise.all(
 		reviews.data
@@ -44,6 +43,40 @@ async function collectApprovers(
 	*/
 }
 
+async function updateComment(
+	owner: string,
+	repo: string,
+	prNum: string,
+	octokit: InstanceType<typeof GitHub>,
+	messageBody: string,
+) {
+	const messageHead = "Approvals in the following modules are missing:";
+	const newMessage = messageHead + "\n" + messageBody;
+
+	const comments = await octokit.request("GET /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+		owner: owner,
+		repo: repo,
+		issue_number: +prNum,
+	});
+
+	const ownerComment = comments.data.find((m) => m.body != null && m.body.startsWith(messageHead));
+	if (ownerComment != null) {
+		await octokit.request("PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}", {
+			owner: owner,
+			repo: repo,
+			comment_id: ownerComment.id,
+			body: newMessage,
+		});
+	} else {
+		await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+			owner: owner,
+			repo: repo,
+			issue_number: +prNum,
+			body: newMessage,
+		});
+	}
+}
+
 const run = async (): Promise<void> => {
 	// core.debug("Hello World");
 	console.log("Start action");
@@ -53,9 +86,8 @@ const run = async (): Promise<void> => {
 		const myToken = core.getInput("myToken");
 		const octokit = github.getOctokit(myToken);
 		const ownersManager = new OwnersManager(owner, repo, prNum, octokit);
-		const headCommitSha = github.context.payload.pull_request != null
-			? github.context.payload.pull_request.head.sha
-			: null;
+		const headCommitSha =
+			github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
 
 		const response = await octokit.request(
 			"GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files",
@@ -71,15 +103,12 @@ const run = async (): Promise<void> => {
 		for (const r of response.data) {
 			const result = await ownersManager.collectOwners(r.filename);
 			moduleOwnersMap.set(result.path, result.owners);
-			console.log("-", r.filename, ": ", result.owners.kind === OwnersKind.list ? result.owners.list : "anyone");
 		}
 
 		const approvers = await collectApprovers(owner, repo, prNum, octokit);
-		console.log("xxx approve emails: ", approvers)
 
 		const requireApproveModules: string[] = [];
 		moduleOwnersMap.forEach((value, key) => {
-			console.log("xxx: -- ", key, value)
 			if (value.kind === OwnersKind.list && value.list.every((owner) => approvers.indexOf(owner) === -1)) {
 				requireApproveModules.push(key);
 			}
@@ -101,12 +130,7 @@ const run = async (): Promise<void> => {
 				state: "pending",
 			});
 
-			await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
-				owner: owner,
-				repo: repo,
-				issue_number: +prNum,
-				body: comment,
-			});
+			await updateComment(owner, repo, prNum, octokit, comment);
 		} else {
 			await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
 				owner: owner,
