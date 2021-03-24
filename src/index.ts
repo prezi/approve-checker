@@ -20,6 +20,33 @@ async function collectApprovers(
 		.map((review) => (review.user != null ? review.user.login : null))
 		.filter((res) => res != null) as ReadonlyArray<string>;
 
+	const query = `{
+		organization(login: "prezi") {
+		  samlIdentityProvider {
+			externalIdentities(first: 100) {
+			  edges {
+				node {
+				  samlIdentity {
+					nameId
+				  }
+				  user {
+					login
+				  }
+				}
+			  }
+			  pageInfo {
+				hasNextPage,
+				endCursor
+			  }
+			}
+		  }
+		}
+	}`;
+
+	const gres = octokit.graphql(query);
+	console.log("xxx gres", gres);
+
+	/*
 	const emails = await Promise.all(
 		reviews.data
 			.filter(review => review.state === "APPROVED")
@@ -39,7 +66,9 @@ async function collectApprovers(
 			}),
 	);
 
+
 	console.log("xxx emails: ", emails);
+	*/
 
 	/*
 	return emails.filter((e) => e != null) as ReadonlyArray<string>;
