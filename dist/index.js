@@ -5969,32 +5969,28 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         repo: repo,
         pull_number: +prNum,
     });
-    return reviews.data
+    const res = reviews.data
         .filter((review) => review.state === "APPROVED")
         .map((review) => (review.user != null ? review.user.login : null))
         .filter((res) => res != null);
+    /*const emails = */ await Promise.all(reviews.data
+        .filter(review => review.state === "APPROVED")
+        .map(async (review) => {
+        const username = review.user != null ? review.user.login : null;
+        console.log("xxx finding email: ", username);
+        if (username == null) {
+            return Promise.resolve(null);
+        }
+        const user = await octokit.request("GET /users/{username}", {
+            username: username,
+        });
+        console.log("xxx email found: ", user.data.email);
+        return Promise.resolve(user.data.email);
+    }));
     /*
-    const emails = await Promise.all(
-        reviews.data
-            .filter(review => review.state === "APPROVED")
-            .map(async (review) => {
-                const username = review.user != null ? review.user.login : null;
-                console.log("xxx finding email: ", username);
-                if (username == null) {
-                    return Promise.resolve(null);
-                }
-
-                const user = await octokit.request("GET /users/{username}", {
-                    username: username,
-                });
-
-                console.log("xxx email found: ", user.data.email);
-                return Promise.resolve(user.data.email);
-            }),
-    );
-
     return emails.filter((e) => e != null) as ReadonlyArray<string>;
     */
+    return res;
 }
 async function updateComment(owner, repo, prNum, octokit, messageBody) {
     const messageHead = "Approvals in the following modules are missing:";
@@ -6030,6 +6026,7 @@ const run = async () => {
         const prNum = core.getInput("pr-number");
         const myToken = core.getInput("myToken");
         const octokit = github.getOctokit(myToken);
+        // octokit.graphql()
         const ownersManager = new OwnersManager_1.OwnersManager(owner, repo, prNum, octokit);
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
         const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {

@@ -15,12 +15,12 @@ async function collectApprovers(
 		pull_number: +prNum,
 	});
 
-	return reviews.data
+	const res = reviews.data
 		.filter((review) => review.state === "APPROVED")
 		.map((review) => (review.user != null ? review.user.login : null))
 		.filter((res) => res != null) as ReadonlyArray<string>;
-	/*
-	const emails = await Promise.all(
+
+	/*const emails = */await Promise.all(
 		reviews.data
 			.filter(review => review.state === "APPROVED")
 			.map(async (review) => {
@@ -39,8 +39,11 @@ async function collectApprovers(
 			}),
 	);
 
+	/*
 	return emails.filter((e) => e != null) as ReadonlyArray<string>;
 	*/
+
+	return res;
 }
 
 async function updateComment(
@@ -85,6 +88,7 @@ const run = async (): Promise<void> => {
 		const prNum = core.getInput("pr-number");
 		const myToken = core.getInput("myToken");
 		const octokit = github.getOctokit(myToken);
+		// octokit.graphql()
 		const ownersManager = new OwnersManager(owner, repo, prNum, octokit);
 		const headCommitSha =
 			github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
