@@ -20,7 +20,7 @@ async function collectApprovers(
 		.map((review) => (review.user != null ? review.user.login : null))
 		.filter((res) => res != null) as ReadonlyArray<string>;
 
-	const query = `{
+	/*const query = `{
 		organization(login: "prezi") {
 		  samlIdentityProvider {
 			externalIdentities(first: 100) {
@@ -45,8 +45,9 @@ async function collectApprovers(
 
 	const gres = await octokit.graphql(query);
 	console.log("xxx gres", gres);
+	*/
 
-	/*
+
 	const emails = await Promise.all(
 		reviews.data
 			.filter(review => review.state === "APPROVED")
@@ -68,7 +69,7 @@ async function collectApprovers(
 
 
 	console.log("xxx emails: ", emails);
-	*/
+
 
 	/*
 	return emails.filter((e) => e != null) as ReadonlyArray<string>;
@@ -118,9 +119,12 @@ const run = async (): Promise<void> => {
 		const [owner, repo] = core.getInput("repository").split("/");
 		const prNum = core.getInput("pr-number");
 		const myToken = core.getInput("myToken");
+
 		const octokit = github.getOctokit(myToken);
-		// octokit.graphql()
+		console.log("before owner manager");
+
 		const ownersManager = new OwnersManager(owner, repo, prNum, octokit);
+		console.log("after owner manager");
 		const headCommitSha =
 			github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
 
@@ -133,6 +137,8 @@ const run = async (): Promise<void> => {
 			},
 		);
 
+		console.log("after get changed files manager");
+
 		const moduleOwnersMap = new Map<string, Owners>();
 
 		for (const r of response.data) {
@@ -140,7 +146,11 @@ const run = async (): Promise<void> => {
 			moduleOwnersMap.set(result.path, result.owners);
 		}
 
+		console.log("after owners collected");
+
 		const approvers = await collectApprovers(owner, repo, prNum, octokit);
+
+		console.log("after approvers collected");
 
 		const requireApproveModules: string[] = [];
 		moduleOwnersMap.forEach((value, key) => {
@@ -158,6 +168,8 @@ const run = async (): Promise<void> => {
 				}
 			});
 
+			console.log("before status pushed IF");
+
 			await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
 				owner: owner,
 				repo: repo,
@@ -165,14 +177,20 @@ const run = async (): Promise<void> => {
 				state: "pending",
 			});
 
+			console.log("after status pushed IF");
+
 			await updateComment(owner, repo, prNum, octokit, comment);
+
+			console.log("after comment updated IF");
 		} else {
+			console.log("before status pushed ELSE");
 			await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
 				owner: owner,
 				repo: repo,
 				sha: headCommitSha,
 				state: "success",
 			});
+			console.log("after status pushed ELSE");
 		}
 	} catch (error) {
 		core.setFailed(error.message);

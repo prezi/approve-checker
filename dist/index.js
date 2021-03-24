@@ -5973,53 +5973,47 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         .filter((review) => review.state === "APPROVED")
         .map((review) => (review.user != null ? review.user.login : null))
         .filter((res) => res != null);
-    const query = `{
-		organization(login: "prezi") {
-		  samlIdentityProvider {
-			externalIdentities(first: 100) {
-			  edges {
-				node {
-				  samlIdentity {
-					nameId
-				  }
-				  user {
-					login
-				  }
-				}
-			  }
-			  pageInfo {
-				hasNextPage,
-				endCursor
-			  }
-			}
-		  }
-		}
-	}`;
+    /*const query = `{
+        organization(login: "prezi") {
+          samlIdentityProvider {
+            externalIdentities(first: 100) {
+              edges {
+                node {
+                  samlIdentity {
+                    nameId
+                  }
+                  user {
+                    login
+                  }
+                }
+              }
+              pageInfo {
+                hasNextPage,
+                endCursor
+              }
+            }
+          }
+        }
+    }`;
+
     const gres = await octokit.graphql(query);
     console.log("xxx gres", gres);
-    /*
-    const emails = await Promise.all(
-        reviews.data
-            .filter(review => review.state === "APPROVED")
-            .map(async (review) => {
-                const username = review.user != null ? review.user.login : null;
-                console.log("xxx finding email: ", username);
-                if (username == null) {
-                    return Promise.resolve(null);
-                }
-
-                const user = await octokit.request("GET /users/{username}", {
-                    username: username,
-                });
-
-                console.log("xxx email found: ", user.data.email);
-                return Promise.resolve(user.data.email);
-            }),
-    );
-
-
-    console.log("xxx emails: ", emails);
     */
+    const emails = await Promise.all(reviews.data
+        .filter(review => review.state === "APPROVED")
+        .map(async (review) => {
+        const username = review.user != null ? review.user.login : null;
+        console.log("xxx finding email: ", username);
+        if (username == null) {
+            return Promise.resolve(null);
+        }
+        const user = await octokit.request("GET /users/{username}", {
+            username: username,
+        });
+        console.log("xxx email found: ", user.data.email);
+        return Promise.resolve(user.data.email);
+    }));
+    console.log("xxx emails: ", emails);
     /*
     return emails.filter((e) => e != null) as ReadonlyArray<string>;
     */
@@ -6059,20 +6053,24 @@ const run = async () => {
         const prNum = core.getInput("pr-number");
         const myToken = core.getInput("myToken");
         const octokit = github.getOctokit(myToken);
-        // octokit.graphql()
+        console.log("before owner manager");
         const ownersManager = new OwnersManager_1.OwnersManager(owner, repo, prNum, octokit);
+        console.log("after owner manager");
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
         const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
             owner: owner,
             repo: repo,
             pull_number: prNum,
         });
+        console.log("after get changed files manager");
         const moduleOwnersMap = new Map();
         for (const r of response.data) {
             const result = await ownersManager.collectOwners(r.filename);
             moduleOwnersMap.set(result.path, result.owners);
         }
+        console.log("after owners collected");
         const approvers = await collectApprovers(owner, repo, prNum, octokit);
+        console.log("after approvers collected");
         const requireApproveModules = [];
         moduleOwnersMap.forEach((value, key) => {
             if (value.kind === OwnersManager_1.OwnersKind.list && value.list.every((owner) => approvers.indexOf(owner) === -1)) {
@@ -6087,21 +6085,26 @@ const run = async () => {
                     comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
                 }
             });
+            console.log("before status pushed IF");
             await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
                 owner: owner,
                 repo: repo,
                 sha: headCommitSha,
                 state: "pending",
             });
+            console.log("after status pushed IF");
             await updateComment(owner, repo, prNum, octokit, comment);
+            console.log("after comment updated IF");
         }
         else {
+            console.log("before status pushed ELSE");
             await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
                 owner: owner,
                 repo: repo,
                 sha: headCommitSha,
                 state: "success",
             });
+            console.log("after status pushed ELSE");
         }
     }
     catch (error) {
