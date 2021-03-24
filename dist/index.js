@@ -5969,10 +5969,20 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         repo: repo,
         pull_number: +prNum,
     });
-    const res = reviews.data
-        .filter((review) => review.state === "APPROVED")
-        .map((review) => (review.user != null ? review.user.login : null))
-        .filter((res) => res != null);
+    const approveSet = new Set();
+    reviews.data.forEach(review => {
+        const user = review.user;
+        if (user != null) {
+            const key = user.login;
+            if (review.state === "APPROVED") {
+                approveSet.add(key);
+            }
+            else if (review.state === "REQUEST_CHANGES") {
+                approveSet.delete(key);
+            }
+        }
+    });
+    return [...approveSet];
     /*const query = `{
         organization(login: "prezi") {
           samlIdentityProvider {
@@ -5999,25 +6009,30 @@ async function collectApprovers(owner, repo, prNum, octokit) {
     const gres = await octokit.graphql(query);
     console.log("xxx gres", gres);
     */
-    const emails = await Promise.all(reviews.data
-        // .filter(review => review.state === "APPROVED")
-        .map(async (review) => {
-        const username = review.user != null ? review.user.login : null;
-        console.log("xxx finding email: ", username);
-        if (username == null) {
-            return Promise.resolve(null);
-        }
-        const user = await octokit.request("GET /users/{username}", {
-            username: username,
-        });
-        console.log("xxx email found: ", user.data.email);
-        return Promise.resolve(user.data.email);
-    }));
+    /*const emails = await Promise.all(
+        reviews.data
+            // .filter(review => review.state === "APPROVED")
+            .map(async (review) => {
+                const username = review.user != null ? review.user.login : null;
+                console.log("xxx finding email: ", username);
+                if (username == null) {
+                    return Promise.resolve(null);
+                }
+
+                const user = await octokit.request("GET /users/{username}", {
+                    username: username,
+                });
+
+                console.log("xxx email found: ", user.data.email);
+                return Promise.resolve(user.data.email);
+            }),
+    );
+
+
     console.log("xxx emails: ", emails);
-    /*
+
     return emails.filter((e) => e != null) as ReadonlyArray<string>;
     */
-    return res;
 }
 async function updateComment(owner, repo, prNum, octokit, messageBody) {
     const messageHead = "Approvals in the following modules are missing:";

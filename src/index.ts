@@ -15,10 +15,20 @@ async function collectApprovers(
 		pull_number: +prNum,
 	});
 
-	const res = reviews.data
-		.filter((review) => review.state === "APPROVED")
-		.map((review) => (review.user != null ? review.user.login : null))
-		.filter((res) => res != null) as ReadonlyArray<string>;
+	const approveSet = new Set<string>();
+	reviews.data.forEach(review => {
+		const user = review.user;
+		if (user != null) {
+			const key = user.login;
+			if (review.state === "APPROVED") {
+				approveSet.add(key);
+			} else if (review.state === "REQUEST_CHANGES") {
+				approveSet.delete(key);
+			}
+		}
+	});
+
+	return [...approveSet];
 
 	/*const query = `{
 		organization(login: "prezi") {
@@ -48,7 +58,7 @@ async function collectApprovers(
 	*/
 
 
-	const emails = await Promise.all(
+	/*const emails = await Promise.all(
 		reviews.data
 			// .filter(review => review.state === "APPROVED")
 			.map(async (review) => {
@@ -70,12 +80,8 @@ async function collectApprovers(
 
 	console.log("xxx emails: ", emails);
 
-
-	/*
 	return emails.filter((e) => e != null) as ReadonlyArray<string>;
 	*/
-
-	return res;
 }
 
 async function updateComment(
