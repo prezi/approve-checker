@@ -5973,7 +5973,7 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         .filter((review) => review.state === "APPROVED")
         .map((review) => (review.user != null ? review.user.login : null))
         .filter((res) => res != null);
-    /*const emails = */ await Promise.all(reviews.data
+    const emails = await Promise.all(reviews.data
         .filter(review => review.state === "APPROVED")
         .map(async (review) => {
         const username = review.user != null ? review.user.login : null;
@@ -5987,6 +5987,7 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         console.log("xxx email found: ", user.data.email);
         return Promise.resolve(user.data.email);
     }));
+    console.log("xxx emails: ", emails);
     /*
     return emails.filter((e) => e != null) as ReadonlyArray<string>;
     */

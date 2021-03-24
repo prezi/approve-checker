@@ -20,7 +20,7 @@ async function collectApprovers(
 		.map((review) => (review.user != null ? review.user.login : null))
 		.filter((res) => res != null) as ReadonlyArray<string>;
 
-	/*const emails = */await Promise.all(
+	const emails = await Promise.all(
 		reviews.data
 			.filter(review => review.state === "APPROVED")
 			.map(async (review) => {
@@ -38,6 +38,8 @@ async function collectApprovers(
 				return Promise.resolve(user.data.email);
 			}),
 	);
+
+	console.log("xxx emails: ", emails);
 
 	/*
 	return emails.filter((e) => e != null) as ReadonlyArray<string>;
