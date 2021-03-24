@@ -5995,7 +5995,7 @@ async function collectApprovers(owner, repo, prNum, octokit) {
 		  }
 		}
 	}`;
-    const gres = octokit.graphql(query);
+    const gres = await octokit.graphql(query);
     console.log("xxx gres", gres);
     /*
     const emails = await Promise.all(

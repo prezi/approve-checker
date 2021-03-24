@@ -43,7 +43,7 @@ async function collectApprovers(
 		}
 	}`;
 
-	const gres = octokit.graphql(query);
+	const gres = await octokit.graphql(query);
 	console.log("xxx gres", gres);
 
 	/*
