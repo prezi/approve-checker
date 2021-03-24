@@ -5969,20 +5969,23 @@ async function collectApprovers(owner, repo, prNum, octokit) {
         repo: repo,
         pull_number: +prNum,
     });
-    const approveSet = new Set();
+    const approvers = new Set();
+    const rejecters = new Set();
     reviews.data.forEach(review => {
         const user = review.user;
         if (user != null) {
             const key = user.login;
             if (review.state === "APPROVED") {
-                approveSet.add(key);
+                approvers.add(key);
+                rejecters.delete(key);
             }
             else if (review.state === "REQUEST_CHANGES") {
-                approveSet.delete(key);
+                approvers.delete(key);
+                rejecters.add(key);
             }
         }
     });
-    return [...approveSet];
+    return { approvers, rejecters };
     /*const query = `{
         organization(login: "prezi") {
           samlIdentityProvider {
@@ -6068,31 +6071,26 @@ const run = async () => {
         const prNum = core.getInput("pr-number");
         const myToken = core.getInput("myToken");
         const octokit = github.getOctokit(myToken);
-        console.log("before owner manager");
         const ownersManager = new OwnersManager_1.OwnersManager(owner, repo, prNum, octokit);
-        console.log("after owner manager");
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
         const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
             owner: owner,
             repo: repo,
             pull_number: prNum,
         });
-        console.log("after get changed files manager");
         const moduleOwnersMap = new Map();
         for (const r of response.data) {
             const result = await ownersManager.collectOwners(r.filename);
             moduleOwnersMap.set(result.path, result.owners);
         }
-        console.log("after owners collected");
-        const approvers = await collectApprovers(owner, repo, prNum, octokit);
-        console.log("after approvers collected");
+        const { approvers, rejecters } = await collectApprovers(owner, repo, prNum, octokit);
         const requireApproveModules = [];
         moduleOwnersMap.forEach((value, key) => {
-            if (value.kind === OwnersManager_1.OwnersKind.list && value.list.every((owner) => approvers.indexOf(owner) === -1)) {
+            if (value.kind === OwnersManager_1.OwnersKind.list && value.list.every((owner) => !approvers.has(owner))) {
                 requireApproveModules.push(key);
             }
         });
-        if (requireApproveModules.length > 0) {
+        if (requireApproveModules.length > 0 || rejecters.size > 0) {
             let comment = "";
             requireApproveModules.forEach((key) => {
                 const value = moduleOwnersMap.get(key);
@@ -6100,26 +6098,24 @@ const run = async () => {
                     comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
                 }
             });
-            console.log("before status pushed IF");
+            if (rejecters.size > 0) {
+                comment += "\n\n requested changes: " + [...rejecters];
+            }
             await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
                 owner: owner,
                 repo: repo,
                 sha: headCommitSha,
                 state: "pending",
             });
-            console.log("after status pushed IF");
             await updateComment(owner, repo, prNum, octokit, comment);
-            console.log("after comment updated IF");
         }
         else {
-            console.log("before status pushed ELSE");
             await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
                 owner: owner,
                 repo: repo,
                 sha: headCommitSha,
                 state: "success",
             });
-            console.log("after status pushed ELSE");
         }
     }
     catch (error) {

@@ -8,27 +8,31 @@ async function collectApprovers(
 	repo: string,
 	prNum: string,
 	octokit: InstanceType<typeof GitHub>,
-): Promise<ReadonlyArray<string>> {
+): Promise<{approvers: Set<string>, rejecters: Set<string>}> {
 	const reviews = await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", {
 		owner: owner,
 		repo: repo,
 		pull_number: +prNum,
 	});
 
-	const approveSet = new Set<string>();
+	const approvers = new Set<string>();
+	const rejecters = new Set<string>();
 	reviews.data.forEach(review => {
 		const user = review.user;
 		if (user != null) {
 			const key = user.login;
 			if (review.state === "APPROVED") {
-				approveSet.add(key);
+				approvers.add(key);
+				rejecters.delete(key);
+
 			} else if (review.state === "REQUEST_CHANGES") {
-				approveSet.delete(key);
+				approvers.delete(key);
+				rejecters.add(key);
 			}
 		}
 	});
 
-	return [...approveSet];
+	return {approvers, rejecters};
 
 	/*const query = `{
 		organization(login: "prezi") {
@@ -127,10 +131,7 @@ const run = async (): Promise<void> => {
 		const myToken = core.getInput("myToken");
 
 		const octokit = github.getOctokit(myToken);
-		console.log("before owner manager");
-
 		const ownersManager = new OwnersManager(owner, repo, prNum, octokit);
-		console.log("after owner manager");
 		const headCommitSha =
 			github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
 
@@ -143,8 +144,6 @@ const run = async (): Promise<void> => {
 			},
 		);
 
-		console.log("after get changed files manager");
-
 		const moduleOwnersMap = new Map<string, Owners>();
 
 		for (const r of response.data) {
@@ -152,20 +151,16 @@ const run = async (): Promise<void> => {
 			moduleOwnersMap.set(result.path, result.owners);
 		}
 
-		console.log("after owners collected");
-
-		const approvers = await collectApprovers(owner, repo, prNum, octokit);
-
-		console.log("after approvers collected");
+		const {approvers, rejecters} = await collectApprovers(owner, repo, prNum, octokit);
 
 		const requireApproveModules: string[] = [];
 		moduleOwnersMap.forEach((value, key) => {
-			if (value.kind === OwnersKind.list && value.list.every((owner) => approvers.indexOf(owner) === -1)) {
+			if (value.kind === OwnersKind.list && value.list.every((owner) => !approvers.has(owner))) {
 				requireApproveModules.push(key);
 			}
 		});
 
-		if (requireApproveModules.length > 0) {
+		if (requireApproveModules.length > 0 || rejecters.size > 0) {
 			let comment = "";
 			requireApproveModules.forEach((key) => {
 				const value = moduleOwnersMap.get(key);
@@ -174,7 +169,9 @@ const run = async (): Promise<void> => {
 				}
 			});
 
-			console.log("before status pushed IF");
+			if (rejecters.size > 0) {
+				comment += "\n\n requested changes: " + [...rejecters];
+			}
 
 			await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
 				owner: owner,
@@ -183,20 +180,14 @@ const run = async (): Promise<void> => {
 				state: "pending",
 			});
 
-			console.log("after status pushed IF");
-
 			await updateComment(owner, repo, prNum, octokit, comment);
-
-			console.log("after comment updated IF");
 		} else {
-			console.log("before status pushed ELSE");
 			await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
 				owner: owner,
 				repo: repo,
 				sha: headCommitSha,
 				state: "success",
 			});
-			console.log("after status pushed ELSE");
 		}
 	} catch (error) {
 		core.setFailed(error.message);
