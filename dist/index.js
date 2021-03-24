@@ -6000,7 +6000,7 @@ async function collectApprovers(owner, repo, prNum, octokit) {
     console.log("xxx gres", gres);
     */
     const emails = await Promise.all(reviews.data
-        .filter(review => review.state === "APPROVED")
+        // .filter(review => review.state === "APPROVED")
         .map(async (review) => {
         const username = review.user != null ? review.user.login : null;
         console.log("xxx finding email: ", username);
