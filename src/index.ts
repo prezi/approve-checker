@@ -19,13 +19,16 @@ async function collectApprovers(
 	const rejecters = new Set<string>();
 	reviews.data.forEach(review => {
 		const user = review.user;
+		console.log("xxx state: ", review.state)
 		if (user != null) {
 			const key = user.login;
 			if (review.state === "APPROVED") {
+				console.log("xxx add approver", key)
 				approvers.add(key);
 				rejecters.delete(key);
 
 			} else if (review.state === "REQUEST_CHANGES") {
+				console.log("xxx add rejecter", key)
 				approvers.delete(key);
 				rejecters.add(key);
 			}
@@ -153,6 +156,8 @@ const run = async (): Promise<void> => {
 
 		const {approvers, rejecters} = await collectApprovers(owner, repo, prNum, octokit);
 
+		console.log("xxx approvers: ", [...approvers])
+		console.log("xxx rejectes: ", [...rejecters])
 		const requireApproveModules: string[] = [];
 		moduleOwnersMap.forEach((value, key) => {
 			if (value.kind === OwnersKind.list && value.list.every((owner) => !approvers.has(owner))) {
