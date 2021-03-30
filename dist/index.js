@@ -6110,7 +6110,7 @@ const run = async () => {
                 owner: owner,
                 repo: repo,
                 sha: headCommitSha,
-                state: "pending",
+                state: "failure",
             });
         }
         else {

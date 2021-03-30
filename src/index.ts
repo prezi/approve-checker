@@ -182,7 +182,7 @@ const run = async (): Promise<void> => {
 				owner: owner,
 				repo: repo,
 				sha: headCommitSha,
-				state: "pending",
+				state: "failure",
 			});
 		} else {
 			await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
