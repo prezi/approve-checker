@@ -160,8 +160,8 @@ const run = async (): Promise<void> => {
 			}
 		});
 
+		let comment = "";
 		if (requireApproveModules.length > 0 || rejecters.size > 0) {
-			let comment = "";
 			requireApproveModules.forEach((key) => {
 				const value = moduleOwnersMap.get(key);
 				if (value != null) {
@@ -179,8 +179,6 @@ const run = async (): Promise<void> => {
 				sha: headCommitSha,
 				state: "pending",
 			});
-
-			await updateComment(owner, repo, prNum, octokit, comment);
 		} else {
 			await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
 				owner: owner,
@@ -188,7 +186,9 @@ const run = async (): Promise<void> => {
 				sha: headCommitSha,
 				state: "success",
 			});
+			comment = "\n\n No more approvals are needed";
 		}
+		await updateComment(owner, repo, prNum, octokit, comment);
 	} catch (error) {
 		core.setFailed(error.message);
 	}
