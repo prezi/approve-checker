@@ -27,7 +27,7 @@ async function collectApprovers(
 				approvers.add(key);
 				rejecters.delete(key);
 
-			} else if (review.state === "REQUEST_CHANGES") {
+			} else if (review.state === "CHANGES_REQUESTED") {
 				console.log("xxx add rejecter", key)
 				approvers.delete(key);
 				rejecters.add(key);
