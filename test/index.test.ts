@@ -1,5 +1,6 @@
 import {OwnersManager, OwnersKind, Owners} from "../src/OwnersManager";
 import {doApproverCheckLogic} from "../src/index"
+import { SimpleCommentFormatter } from "../src/CommentFormatter";
 
 interface OwnerResult {
 	data: {
@@ -617,10 +618,9 @@ describe("Test the full flow", () => {
 
 	testCases.forEach(tc => {
 		it(tc.name, async () => {
-			console.log("xxx start test: ", tc.name)
 			const om = new OctokitMock(tc.initialData);
 			expect(om.getStatus()).toBe("nothing");
-			await doApproverCheckLogic(om as any, tc.initialData.headCommitSha);
+			await doApproverCheckLogic(om as any, tc.initialData.headCommitSha, new SimpleCommentFormatter());
 			expect(om.getStatus()).toBe(tc.expect.status);
 			if (tc.expect.comment != "") {
 				expect(om.getComment()).toBe(tc.expect.comment);

@@ -5828,6 +5828,26 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 249:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TableCommentFormatter = exports.SimpleCommentFormatter = void 0;
+class SimpleCommentFormatter {
+    format(data) {
+        return data.reduce((prev, curr) => prev + `- ${curr.path}: ${curr.users}\n`, "");
+    }
+}
+exports.SimpleCommentFormatter = SimpleCommentFormatter;
+class TableCommentFormatter {
+}
+exports.TableCommentFormatter = TableCommentFormatter;
+
+
+/***/ }),
+
 /***/ 295:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -6047,6 +6067,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.doApproverCheckLogic = void 0;
 const core = __importStar(__nccwpck_require__(374));
 const github = __importStar(__nccwpck_require__(94));
+const CommentFormatter_1 = __nccwpck_require__(249);
 const OctokitWrapper_1 = __nccwpck_require__(295);
 const OwnersManager_1 = __nccwpck_require__(190);
 async function collectApprovers(octokit, headCommitSha) {
@@ -6081,7 +6102,7 @@ async function updateComment(octokit, messageBody) {
         await octokit.addComment(newMessage);
     }
 }
-async function doApproverCheckLogic(octokit, headCommitSha) {
+async function doApproverCheckLogic(octokit, headCommitSha, commentFormatter) {
     const ownersManager = new OwnersManager_1.OwnersManager(octokit);
     const files = await octokit.getFiles();
     const moduleOwnersMap = new Map();
@@ -6109,11 +6130,14 @@ async function doApproverCheckLogic(octokit, headCommitSha) {
     });
     let comment = "";
     if (requireApproveModules.size > 0) {
+        const pathUserData = [];
         requireApproveModules.forEach((value, key) => {
             if (value != null) {
-                comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
+                pathUserData.push({ path: key, users: value.kind === OwnersManager_1.OwnersKind.list ? value.list : ["anyone"] });
+                // comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
             }
         });
+        comment = commentFormatter.format(pathUserData);
         await octokit.updateStatus("failure");
     }
     else {
@@ -6131,7 +6155,7 @@ const run = async () => {
         const token = core.getInput("myToken");
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
         const octokit = new OctokitWrapper_1.OctokitWrapper(owner, repo, prNum, headCommitSha, token);
-        await doApproverCheckLogic(octokit, headCommitSha);
+        await doApproverCheckLogic(octokit, headCommitSha, new CommentFormatter_1.TableCommentFormatter());
     }
     catch (error) {
         core.setFailed(error.message);

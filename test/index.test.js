@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const OwnersManager_1 = require("../src/OwnersManager");
 const index_1 = require("../src/index");
+const CommentFormatter_1 = require("../src/CommentFormatter");
 const noFiles = { data: [] };
 const noApprovers = { data: [] };
 const userA = "userA";
@@ -533,10 +534,9 @@ describe("Test the full flow", () => {
     ];
     testCases.forEach(tc => {
         it(tc.name, async () => {
-            console.log("xxx start test: ", tc.name);
             const om = new OctokitMock(tc.initialData);
             expect(om.getStatus()).toBe("nothing");
-            await index_1.doApproverCheckLogic(om, tc.initialData.headCommitSha);
+            await index_1.doApproverCheckLogic(om, tc.initialData.headCommitSha, new CommentFormatter_1.SimpleCommentFormatter());
             expect(om.getStatus()).toBe(tc.expect.status);
             if (tc.expect.comment != "") {
                 expect(om.getComment()).toBe(tc.expect.comment);

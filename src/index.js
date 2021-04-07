@@ -22,6 +22,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.doApproverCheckLogic = void 0;
 const core = __importStar(require("@actions/core"));
 const github = __importStar(require("@actions/github"));
+const CommentFormatter_1 = require("./CommentFormatter");
 const OctokitWrapper_1 = require("./OctokitWrapper");
 const OwnersManager_1 = require("./OwnersManager");
 async function collectApprovers(octokit, headCommitSha) {
@@ -56,7 +57,7 @@ async function updateComment(octokit, messageBody) {
         await octokit.addComment(newMessage);
     }
 }
-async function doApproverCheckLogic(octokit, headCommitSha) {
+async function doApproverCheckLogic(octokit, headCommitSha, commentFormatter) {
     const ownersManager = new OwnersManager_1.OwnersManager(octokit);
     const files = await octokit.getFiles();
     const moduleOwnersMap = new Map();
@@ -84,11 +85,14 @@ async function doApproverCheckLogic(octokit, headCommitSha) {
     });
     let comment = "";
     if (requireApproveModules.size > 0) {
+        const pathUserData = [];
         requireApproveModules.forEach((value, key) => {
             if (value != null) {
-                comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
+                pathUserData.push({ path: key, users: value.kind === OwnersManager_1.OwnersKind.list ? value.list : ["anyone"] });
+                // comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
             }
         });
+        comment = commentFormatter.format(pathUserData);
         await octokit.updateStatus("failure");
     }
     else {
@@ -106,7 +110,7 @@ const run = async () => {
         const token = core.getInput("myToken");
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
         const octokit = new OctokitWrapper_1.OctokitWrapper(owner, repo, prNum, headCommitSha, token);
-        await doApproverCheckLogic(octokit, headCommitSha);
+        await doApproverCheckLogic(octokit, headCommitSha, new CommentFormatter_1.TableCommentFormatter());
     }
     catch (error) {
         core.setFailed(error.message);

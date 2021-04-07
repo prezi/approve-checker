@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
+import { CommentFormatter, PathUserData, TableCommentFormatter } from "./CommentFormatter";
 import { OctokitWrapper } from "./OctokitWrapper";
 import {Owners, OwnersKind, OwnersManager} from "./OwnersManager";
 
@@ -44,7 +45,7 @@ async function updateComment(
 	}
 }
 
-export async function doApproverCheckLogic(octokit: OctokitWrapper, headCommitSha: string) {
+export async function doApproverCheckLogic(octokit: OctokitWrapper, headCommitSha: string, commentFormatter: CommentFormatter) {
 	const ownersManager = new OwnersManager(octokit);
 
 	const files = await octokit.getFiles();
@@ -78,11 +79,14 @@ export async function doApproverCheckLogic(octokit: OctokitWrapper, headCommitSh
 
 	let comment = "";
 	if (requireApproveModules.size > 0) {
+		const pathUserData: PathUserData[] = [];
 		requireApproveModules.forEach((value, key) => {
 			if (value != null) {
-				comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
+				pathUserData.push({path: key, users: value.kind === OwnersKind.list ? value.list : ["anyone"]})
+				// comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
 			}
 		});
+		comment = commentFormatter.format(pathUserData)
 
 		await octokit.updateStatus("failure");
 	} else {
@@ -100,7 +104,7 @@ const run = async (): Promise<void> => {
 		const token = core.getInput("myToken");
 		const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
 		const octokit = new OctokitWrapper(owner, repo,prNum, headCommitSha, token);
-		await doApproverCheckLogic(octokit, headCommitSha);
+		await doApproverCheckLogic(octokit, headCommitSha, new TableCommentFormatter());
 
 	} catch (error) {
 		core.setFailed(error.message);
