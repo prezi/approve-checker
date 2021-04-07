@@ -5842,6 +5842,9 @@ class SimpleCommentFormatter {
 }
 exports.SimpleCommentFormatter = SimpleCommentFormatter;
 class TableCommentFormatter {
+    format(data) {
+        return data.reduce((prev, curr) => prev + `|${curr.path}| ${curr.users.reduce((prev, curr) => prev + curr + '<br>')}\n`, "");
+    }
 }
 exports.TableCommentFormatter = TableCommentFormatter;
 
