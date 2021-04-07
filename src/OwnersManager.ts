@@ -83,7 +83,9 @@ export class OwnersManager {
 		try {
 			const ownersResponse: OctokitTypes.OctokitResponse<any> = await this.octokit.getFileContent(path);
 			const buff = Buffer.from(ownersResponse.data.content, "base64");
-			const list = buff.toString("ascii").split("\n");
+			const list = buff.toString("ascii")
+				.split("\n")
+				.filter(line => line !== "" && !line.startsWith("#"))
 			this.saveListInCache(path, origPath, list);
 			return {owners: list, path};
 		} catch (e) {

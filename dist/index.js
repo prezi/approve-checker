@@ -6022,7 +6022,9 @@ class OwnersManager {
         try {
             const ownersResponse = await this.octokit.getFileContent(path);
             const buff = Buffer.from(ownersResponse.data.content, "base64");
-            const list = buff.toString("ascii").split("\n");
+            const list = buff.toString("ascii")
+                .split("\n")
+                .filter(line => line !== "" && !line.startsWith("#"));
             this.saveListInCache(path, origPath, list);
             return { owners: list, path };
         }
