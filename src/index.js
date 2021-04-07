@@ -24,7 +24,7 @@ const core = __importStar(require("@actions/core"));
 const github = __importStar(require("@actions/github"));
 const OctokitWrapper_1 = require("./OctokitWrapper");
 const OwnersManager_1 = require("./OwnersManager");
-async function collectApprovers(octokit) {
+async function collectApprovers(octokit, headCommitSha) {
     const reviews = await octokit.getReviews();
     const approvers = new Set();
     const rejecters = new Set();
@@ -32,7 +32,7 @@ async function collectApprovers(octokit) {
         const user = review.user;
         if (user != null) {
             const key = user.login;
-            if (review.state === "APPROVED") {
+            if (review.state === "APPROVED" && review.commit_id === headCommitSha) {
                 approvers.add(key);
                 rejecters.delete(key);
             }
@@ -56,7 +56,7 @@ async function updateComment(octokit, messageBody) {
         await octokit.addComment(newMessage);
     }
 }
-async function doApproverCheckLogic(octokit) {
+async function doApproverCheckLogic(octokit, headCommitSha) {
     const ownersManager = new OwnersManager_1.OwnersManager(octokit);
     const files = await octokit.getFiles();
     const moduleOwnersMap = new Map();
@@ -64,7 +64,7 @@ async function doApproverCheckLogic(octokit) {
         const result = await ownersManager.collectOwners(r.filename);
         moduleOwnersMap.set(result.path, result.owners);
     }
-    const { approvers, rejecters } = await collectApprovers(octokit);
+    const { approvers, rejecters } = await collectApprovers(octokit, headCommitSha);
     const requireApproveModules = new Map();
     moduleOwnersMap.forEach((value, key) => {
         if (value.kind === OwnersManager_1.OwnersKind.list) {
@@ -106,7 +106,7 @@ const run = async () => {
         const token = core.getInput("myToken");
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
         const octokit = new OctokitWrapper_1.OctokitWrapper(owner, repo, prNum, headCommitSha, token);
-        await doApproverCheckLogic(octokit);
+        await doApproverCheckLogic(octokit, headCommitSha);
     }
     catch (error) {
         core.setFailed(error.message);
