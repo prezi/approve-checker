@@ -14,6 +14,6 @@ export class SimpleCommentFormatter {
 
 export class TableCommentFormatter {
 	public format(data: ReadonlyArray<PathUserData>): string {
-		return data.reduce((prev, curr) => prev + `|${curr.path}| ${curr.users.reduce((prev, curr)=>prev + curr + '<br>')}|\n`, "")
+		return data.reduce((prev, curr) => prev + `| ${curr.path} | ${curr.users.reduce((prev, curr)=>prev + curr + '<br>')} |\n`, "")
 	}
 }
