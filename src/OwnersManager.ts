@@ -1,6 +1,6 @@
-import {GitHub} from "@actions/github/lib/utils";
 import * as OctokitTypes from "@octokit/types";
 import * as Path from "path";
+import { OctokitWrapper } from "./OctokitWrapper";
 
 export enum OwnersKind {
 	anyone = "anyone",
@@ -36,26 +36,22 @@ const ownersfile = "OWNERS";
 export class OwnersManager {
 	private pathOwnersCache: Map<string, OwnersData>;
 	public constructor(
-		private owner: string,
-		private repo: string,
-		private prNum: string,
-		private octokit: InstanceType<typeof GitHub>,
+		private octokit: OctokitWrapper,
 	) {
-		console.log(this.prNum);
 		this.pathOwnersCache = new Map<string, OwnersData>();
 	}
 
 	public async collectOwners(path: string): Promise<OwnersResult> {
 		const content = await this.getOwnersfileContent(path, path);
 		if (content == null) {
-			return {owners: {kind: OwnersKind.anyone}, path: "/"};
+			return {owners: {kind: OwnersKind.anyone}, path: "."};
 		}
 
 		if (content.owners.length === 0) {
-			return {owners: {kind: OwnersKind.anyone}, path: content.path};
+			return {owners: {kind: OwnersKind.anyone}, path: Path.dirname(content.path)};
 		}
 
-		return {owners: {kind: OwnersKind.list, list: content.owners}, path: content.path};
+		return {owners: {kind: OwnersKind.list, list: content.owners}, path: Path.dirname(content.path)};
 	}
 
 	private async getOwnersfileContent(path: string, origPath: string): Promise<OwnersData | null> {
@@ -85,15 +81,7 @@ export class OwnersManager {
 		}
 
 		try {
-			const ownersResponse: OctokitTypes.OctokitResponse<any> = await this.octokit.request(
-				"GET /repos/{owner}/{repo}/contents/{path}",
-				{
-					owner: this.owner,
-					repo: this.repo,
-					path: path,
-				},
-			);
-
+			const ownersResponse: OctokitTypes.OctokitResponse<any> = await this.octokit.getFileContent(path);
 			const buff = Buffer.from(ownersResponse.data.content, "base64");
 			const list = buff.toString("ascii").split("\n");
 			this.saveListInCache(path, origPath, list);

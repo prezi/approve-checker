@@ -1,0 +1,85 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.OctokitWrapper = void 0;
+const github = __importStar(require("@actions/github"));
+class OctokitWrapper {
+    constructor(owner, repo, prNum, headCommitSha, token) {
+        this.owner = owner;
+        this.repo = repo;
+        this.prNum = prNum;
+        this.headCommitSha = headCommitSha;
+        this.octokit = github.getOctokit(token);
+    }
+    getReviews() {
+        return this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", {
+            owner: this.owner,
+            repo: this.repo,
+            pull_number: +this.prNum,
+        });
+    }
+    getComments() {
+        return this.octokit.request("GET /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+            owner: this.owner,
+            repo: this.repo,
+            issue_number: +this.prNum,
+        });
+    }
+    updateComment(commentId, message) {
+        return this.octokit.request("PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}", {
+            owner: this.owner,
+            repo: this.repo,
+            comment_id: commentId,
+            body: message,
+        });
+    }
+    addComment(message) {
+        return this.octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+            owner: this.owner,
+            repo: this.repo,
+            issue_number: +this.prNum,
+            body: message,
+        });
+    }
+    getFiles() {
+        return this.octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
+            owner: this.owner,
+            repo: this.repo,
+            pull_number: this.prNum,
+        });
+    }
+    getFileContent(path) {
+        return this.octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
+            owner: this.owner,
+            repo: this.repo,
+            path: path,
+        });
+    }
+    updateStatus(state) {
+        return this.octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
+            owner: this.owner,
+            repo: this.repo,
+            sha: this.headCommitSha,
+            state: state,
+        });
+    }
+}
+exports.OctokitWrapper = OctokitWrapper;

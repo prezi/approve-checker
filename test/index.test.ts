@@ -1,15 +1,40 @@
 import {OwnersManager, OwnersKind, Owners} from "../src/OwnersManager";
+import {doApproverCheckLogic} from "../src/index"
 
-interface Result {
+interface OwnerResult {
 	data: {
 		content: string;
 	};
+}
+
+interface FileResult {
+	data: ReadonlyArray<{ filename: string }>
+}
+
+const noFiles = {data: []};
+
+interface ApproverResult {
+	data: ReadonlyArray<{
+		user: {
+			login: string
+		},
+		state: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED"
+	}>
+}
+
+const noApprovers = {data: []};
+
+interface TestMockSetup {
+	ownersfileData: Map<string, OwnerResult>,
+	changedFiles: FileResult,
+	approvers: ApproverResult
 }
 
 const userA = "userA";
 const userABase64 = "dXNlckE=";
 const userB = "userB";
 const userAuserBBase64 = "dXNlckEKdXNlckI=";
+const userNotInOwnersfile = "userNotInOwnersfile";
 
 const ownerA = {
 	kind: OwnersKind.list,
@@ -25,22 +50,67 @@ const noOwner: Owners = {
 	kind: OwnersKind.anyone,
 };
 
-const Test1 = new Map<string, Result>([
-	["OWNERS", {data: {content: userABase64}}],
-	["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
-]);
+const Test1: TestMockSetup = {
+	ownersfileData: new Map<string, OwnerResult>([
+		["OWNERS", {data: {content: userABase64}}],
+		["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+	]),
+	approvers: noApprovers,
+	changedFiles: noFiles,
+}
 
-const Test2 = new Map<string, Result>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]);
+const Test2: TestMockSetup = {
+	ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+	approvers: noApprovers,
+	changedFiles: noFiles
+};
+
 class OctokitMock {
 	private cnt = 0;
-	constructor(private testData: Map<string, Result>) {}
-	public request(_: string, param: {owner: string; repo: string; path: string}): Result | undefined {
-		++this.cnt;
-		return this.testData.get(param.path);
-	}
-
+	private status: "failure" | "nothing" | "success" = "nothing";
+	private comment = "";
+	constructor(
+		private mockSetup: TestMockSetup,
+	) {}
 	get counter() {
 		return this.cnt;
+	}
+
+	public getFileContent(path: string): OwnerResult | undefined {
+		++this.cnt;
+		return this.mockSetup.ownersfileData.get(path);
+	}
+
+	public getReviews() {
+		return this.mockSetup.approvers;
+	}
+
+	public getComments() {
+		return { data: [] };
+	}
+
+	public updateComment(_: number, comment: string) {
+		this.comment = comment;
+	}
+
+	public addComment(comment: string) {
+		this.comment = comment;
+	}
+
+	public getFiles() {
+		return this.mockSetup.changedFiles;
+	}
+
+	public updateStatus(state: "failure" | "success") {
+		this.status = state;
+	}
+
+	public getStatus(): "failure" | "nothing" | "success" {
+		return this.status;
+	}
+
+	public getComment(): string {
+		return this.comment;
 	}
 }
 
@@ -67,7 +137,7 @@ function equalOwners(a: Owners, b: Owners): boolean {
 describe("Test ownersfile lookup", () => {
 	it("Two file in the root directory", async () => {
 		const octokitMock = new OctokitMock(Test1);
-		const ownersManager = new OwnersManager("", "", "", octokitMock as any);
+		const ownersManager = new OwnersManager(octokitMock as any);
 		const res1 = await ownersManager.collectOwners("source.js");
 		const res2 = await ownersManager.collectOwners("anotherSource.js");
 		expect(octokitMock.counter).toBe(1);
@@ -77,7 +147,7 @@ describe("Test ownersfile lookup", () => {
 
 	it("Two file in a nested directory", async () => {
 		const octokitMock = new OctokitMock(Test1);
-		const ownersManager = new OwnersManager("", "", "", octokitMock as any);
+		const ownersManager = new OwnersManager(octokitMock as any);
 		const res1 = await ownersManager.collectOwners("moduleA/source.js");
 		const res2 = await ownersManager.collectOwners("moduleA/anotherSource.js");
 		expect(octokitMock.counter).toBe(1);
@@ -87,7 +157,7 @@ describe("Test ownersfile lookup", () => {
 
 	it("No owners in the current directory", async () => {
 		const octokitMock = new OctokitMock(Test1);
-		const ownersManager = new OwnersManager("", "", "", octokitMock as any);
+		const ownersManager = new OwnersManager(octokitMock as any);
 		const res1 = await ownersManager.collectOwners("moduleB/dir1/source.js");
 		const res2 = await ownersManager.collectOwners("moduleB/dir1/anotherSource.js");
 		const res3 = await ownersManager.collectOwners("moduleB/dir2/x.js");
@@ -101,7 +171,7 @@ describe("Test ownersfile lookup", () => {
 
 	it("Maybe owners in the current directory", async () => {
 		const octokitMock = new OctokitMock(Test1);
-		const ownersManager = new OwnersManager("", "", "", octokitMock as any);
+		const ownersManager = new OwnersManager(octokitMock as any);
 		const res1 = await ownersManager.collectOwners("moduleA/dir1/source.js");
 		const res2 = await ownersManager.collectOwners("moduleA/dir1/anotherSource.js");
 		const res3 = await ownersManager.collectOwners("moduleA/dir2/x.js");
@@ -116,8 +186,8 @@ describe("Test ownersfile lookup", () => {
 	});
 
 	it("No owners at all", async () => {
-		const octokitMock = new OctokitMock(new Map());
-		const ownersManager = new OwnersManager("", "", "", octokitMock as any);
+		const octokitMock = new OctokitMock({approvers: noApprovers, changedFiles: noFiles, ownersfileData: new Map()});
+		const ownersManager = new OwnersManager(octokitMock as any);
 		const res1 = await ownersManager.collectOwners("moduleA/dir1/source.js");
 		const res2 = await ownersManager.collectOwners("moduleA/dir1/anotherSource.js");
 		const res3 = await ownersManager.collectOwners("moduleA/dir2/x.js");
@@ -133,7 +203,7 @@ describe("Test ownersfile lookup", () => {
 
 	it("A subdir has owners only", async () => {
 		const octokitMock = new OctokitMock(Test2);
-		const ownersManager = new OwnersManager("", "", "", octokitMock as any);
+		const ownersManager = new OwnersManager(octokitMock as any);
 		const res1 = await ownersManager.collectOwners("moduleA/a.js");
 		const res2 = await ownersManager.collectOwners("moduleB/b.js");
 		expect(octokitMock.counter).toBe(3);
@@ -144,3 +214,334 @@ describe("Test ownersfile lookup", () => {
 	// TODO subdir has empty list
 	// TODO check path
 });
+
+interface TestCase {
+	name: string;
+	initialData: TestMockSetup;
+	expect: {
+		status:  "failure" | "nothing" | "success",
+		comment: string;
+	}
+}
+
+const noMoreApprovalNeededComment = "Approvals in the following modules are missing:\n\nNo more approvals are needed";
+const approvalsNeededComment = (data: {path: string, users: string[]}[]): string => {
+	const msg = data.reduce<string>((val, d) => val + `- ${d.path}: ${d.users}\n`, "");
+	return `Approvals in the following modules are missing:\n\n${msg}`;
+};
+
+describe("Test the full flow", () => {
+	const testCases: TestCase[] = [
+		{
+			name: "one approve",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["OWNERS", {data: {content: userABase64}}],
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [{filename: "moduleA/index.js"}]},
+				approvers: {data: [{user: {login: userA}, state: "APPROVED"}]}
+			},
+			expect: {
+				comment: noMoreApprovalNeededComment,
+				status: "success"
+			}
+		},
+
+		{
+			name: "one approve is missing",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["OWNERS", {data: {content: userABase64}}],
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "moduleA/index.js"},
+					{filename: "index.js"},
+				]},
+				approvers: {data: [{user: {login: userB}, state: "APPROVED"}]}
+			},
+			expect: {
+				comment: approvalsNeededComment([{path: ".", users: [userA]}]),
+				status: "failure"
+			}
+		},
+
+		{
+			name: "no approve - one file changed",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["OWNERS", {data: {content: userABase64}}],
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [{filename: "moduleA/index.js"}]},
+				approvers: {data: []}
+			},
+			expect: {
+				comment: approvalsNeededComment([
+					{path: "moduleA", users: [userA, userB]},
+				]),
+				status: "failure"
+			}
+		},
+
+		{
+			name: "no approve - two files changed",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["OWNERS", {data: {content: userABase64}}],
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "moduleA/index.js"},
+					{filename: "index.js"}
+				]},
+				approvers: {data: []}
+			},
+			expect: {
+				comment: approvalsNeededComment([
+					{path: "moduleA", users: [userA, userB]},
+					{path: ".", users: [userA]},
+				]),
+				status: "failure"
+			}
+		},
+
+		{
+			name: "approver approved then requested change",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["OWNERS", {data: {content: userABase64}}],
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [{filename: "moduleA/index.js"}]},
+				approvers: {data: [
+					{user: {login: userB}, state: "APPROVED"},
+					{user: {login: userB}, state: "CHANGES_REQUESTED"},
+				]}
+			},
+			expect: {
+				comment: approvalsNeededComment([
+					{path: "moduleA", users: [userB]},
+				]),
+				status: "failure"
+			}
+		},
+
+		{
+			name: "approver approved then requested change then approved again",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["OWNERS", {data: {content: userABase64}}],
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [{filename: "moduleA/index.js"}]},
+				approvers: {data: [
+					{user: {login: userB}, state: "APPROVED"},
+					{user: {login: userB}, state: "CHANGES_REQUESTED"},
+					{user: {login: userB}, state: "APPROVED"},
+				]}
+			},
+			expect: {
+				comment: noMoreApprovalNeededComment,
+				status: "success"
+			}
+		},
+
+		{
+			name: "One module has no Owners file - no approve at all",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "moduleA/index.js"},
+					{filename: "index.js"},
+				]},
+				approvers: {data: []}
+			},
+			expect: {
+				comment: approvalsNeededComment([
+					{path: "moduleA", users: [userA, userB]},
+					{path: ".", users: ["anyone"]},
+				]),
+				status: "failure"
+			}
+		},
+
+		{
+			name: "One module has no Owners file - approve comes from other module",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "moduleA/index.js"},
+					{filename: "index.js"},
+				]},
+				approvers: {data: [
+					{user: {login: userB}, state: "APPROVED"},
+				]}
+			},
+			expect: {
+				comment: noMoreApprovalNeededComment,
+				status: "success"
+			}
+		},
+
+		{
+			name: "One module has no Owners file - multiple changes - third user approved",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "moduleA/index.js"},
+					{filename: "index.js"},
+				]},
+				approvers: {data: [
+					{user: {login: userNotInOwnersfile}, state: "APPROVED"},
+				]}
+			},
+			expect: {
+				comment: approvalsNeededComment([{path: "moduleA", users: [userA, userB]}]),
+				status: "failure"
+			}
+		},
+
+		{
+			name: "One moudle has no Owners file - change from that module - third user approved",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "index.js"},
+				]},
+				approvers: {data: [
+					{user: {login: userNotInOwnersfile}, state: "APPROVED"},
+				]}
+			},
+			expect: {
+				comment: noMoreApprovalNeededComment,
+				status: "success"
+			}
+		},
+
+		{
+			name: "One moudle has no Owners file - third user requested change",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "index.js"},
+					{filename: "moduleA/index.js"},
+				]},
+				approvers: {data: [
+					{user: {login: userNotInOwnersfile}, state: "CHANGES_REQUESTED"},
+					{user: {login: userA}, state: "APPROVED"},
+				]}
+			},
+			expect: {
+				comment: approvalsNeededComment([{path: ".", users: [userNotInOwnersfile]}]),
+				status: "failure"
+			}
+		},
+
+		{
+			name: "Non owner approval doesn't count",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["moduleA/OWNERS", {data: {content: userABase64}}],
+					["./OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "moduleA/index.js"},
+				]},
+				approvers: {data: [
+					{user: {login: userB}, state: "APPROVED"},
+				]}
+			},
+			expect: {
+				comment: approvalsNeededComment([{path: "moduleA", users: [userA]}]),
+				status: "failure"
+			}
+		},
+
+		{
+			name: "Two rejecters",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["./OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "index.js"},
+				]},
+				approvers: {data: [
+					{user: {login: userA}, state: "CHANGES_REQUESTED"},
+					{user: {login: userB}, state: "CHANGES_REQUESTED"},
+				]}
+			},
+			expect: {
+				comment: approvalsNeededComment([{path: ".", users: [userA, userB]}]),
+				status: "failure"
+			}
+		},
+
+		{
+			name: "Two rejecter then one approver",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["./OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "index.js"},
+				]},
+				approvers: {data: [
+					{user: {login: userA}, state: "CHANGES_REQUESTED"},
+					{user: {login: userB}, state: "CHANGES_REQUESTED"},
+					{user: {login: userB}, state: "APPROVED"},
+				]}
+			},
+			expect: {
+				comment: approvalsNeededComment([{path: ".", users: [userA]}]),
+				status: "failure"
+			}
+		},
+		{
+			name: "Two rejecter then two approver",
+			initialData: {
+				ownersfileData:  new Map<string, OwnerResult>([
+					["./OWNERS", {data: {content: userAuserBBase64}}],
+				]),
+				changedFiles: {data: [
+					{filename: "index.js"},
+				]},
+				approvers: {data: [
+					{user: {login: userA}, state: "CHANGES_REQUESTED"},
+					{user: {login: userB}, state: "CHANGES_REQUESTED"},
+					{user: {login: userB}, state: "APPROVED"},
+					{user: {login: userA}, state: "APPROVED"},
+				]}
+			},
+			expect: {
+				comment: noMoreApprovalNeededComment,
+				status: "success"
+			}
+		},
+
+	];
+
+	testCases.forEach(tc => {
+		it(tc.name, async () => {
+			const om = new OctokitMock(tc.initialData);
+			expect(om.getStatus()).toBe("nothing");
+			await doApproverCheckLogic(om as any, "");
+			expect(om.getStatus()).toBe(tc.expect.status);
+			if (tc.expect.comment != "") {
+				expect(om.getComment()).toBe(tc.expect.comment);
+			}
+		})
+	})
+})

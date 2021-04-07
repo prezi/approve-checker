@@ -5828,6 +5828,99 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 295:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OctokitWrapper = void 0;
+const github = __importStar(__nccwpck_require__(94));
+class OctokitWrapper {
+    constructor(owner, repo, prNum, headCommitSha, token) {
+        this.owner = owner;
+        this.repo = repo;
+        this.prNum = prNum;
+        this.headCommitSha = headCommitSha;
+        this.octokit = github.getOctokit(token);
+    }
+    getReviews() {
+        return this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", {
+            owner: this.owner,
+            repo: this.repo,
+            pull_number: +this.prNum,
+        });
+    }
+    getComments() {
+        return this.octokit.request("GET /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+            owner: this.owner,
+            repo: this.repo,
+            issue_number: +this.prNum,
+        });
+    }
+    updateComment(commentId, message) {
+        return this.octokit.request("PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}", {
+            owner: this.owner,
+            repo: this.repo,
+            comment_id: commentId,
+            body: message,
+        });
+    }
+    addComment(message) {
+        return this.octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+            owner: this.owner,
+            repo: this.repo,
+            issue_number: +this.prNum,
+            body: message,
+        });
+    }
+    getFiles() {
+        return this.octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
+            owner: this.owner,
+            repo: this.repo,
+            pull_number: this.prNum,
+        });
+    }
+    getFileContent(path) {
+        return this.octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
+            owner: this.owner,
+            repo: this.repo,
+            path: path,
+        });
+    }
+    updateStatus(state) {
+        return this.octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
+            owner: this.owner,
+            repo: this.repo,
+            sha: this.headCommitSha,
+            state: state,
+        });
+    }
+}
+exports.OctokitWrapper = OctokitWrapper;
+
+
+/***/ }),
+
 /***/ 190:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -5862,23 +5955,19 @@ var OwnersKind;
 })(OwnersKind = exports.OwnersKind || (exports.OwnersKind = {}));
 const ownersfile = "OWNERS";
 class OwnersManager {
-    constructor(owner, repo, prNum, octokit) {
-        this.owner = owner;
-        this.repo = repo;
-        this.prNum = prNum;
+    constructor(octokit) {
         this.octokit = octokit;
-        console.log(this.prNum);
         this.pathOwnersCache = new Map();
     }
     async collectOwners(path) {
         const content = await this.getOwnersfileContent(path, path);
         if (content == null) {
-            return { owners: { kind: OwnersKind.anyone }, path: "/" };
+            return { owners: { kind: OwnersKind.anyone }, path: "." };
         }
         if (content.owners.length === 0) {
-            return { owners: { kind: OwnersKind.anyone }, path: content.path };
+            return { owners: { kind: OwnersKind.anyone }, path: Path.dirname(content.path) };
         }
-        return { owners: { kind: OwnersKind.list, list: content.owners }, path: content.path };
+        return { owners: { kind: OwnersKind.list, list: content.owners }, path: Path.dirname(content.path) };
     }
     async getOwnersfileContent(path, origPath) {
         const dirname = Path.dirname(path);
@@ -5906,11 +5995,7 @@ class OwnersManager {
             return cachedValue;
         }
         try {
-            const ownersResponse = await this.octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
-                owner: this.owner,
-                repo: this.repo,
-                path: path,
-            });
+            const ownersResponse = await this.octokit.getFileContent(path);
             const buff = Buffer.from(ownersResponse.data.content, "base64");
             const list = buff.toString("ascii").split("\n");
             this.saveListInCache(path, origPath, list);
@@ -5930,7 +6015,6 @@ class OwnersManager {
     }
 }
 exports.OwnersManager = OwnersManager;
-;
 
 
 /***/ }),
@@ -5960,169 +6044,94 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.doApproverCheckLogic = void 0;
 const core = __importStar(__nccwpck_require__(374));
 const github = __importStar(__nccwpck_require__(94));
+const OctokitWrapper_1 = __nccwpck_require__(295);
 const OwnersManager_1 = __nccwpck_require__(190);
-async function collectApprovers(owner, repo, prNum, octokit) {
-    const reviews = await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", {
-        owner: owner,
-        repo: repo,
-        pull_number: +prNum,
-    });
+async function collectApprovers(octokit, headCommitSha) {
+    const reviews = await octokit.getReviews();
     const approvers = new Set();
     const rejecters = new Set();
     reviews.data.forEach(review => {
         const user = review.user;
-        console.log("xxx state: ", review.state);
         if (user != null) {
             const key = user.login;
-            if (review.state === "APPROVED") {
-                console.log("xxx add approver", key);
+            if (review.state === "APPROVED" && review.commit_id === headCommitSha) {
                 approvers.add(key);
                 rejecters.delete(key);
             }
             else if (review.state === "CHANGES_REQUESTED") {
-                console.log("xxx add rejecter", key);
                 approvers.delete(key);
                 rejecters.add(key);
             }
         }
     });
     return { approvers, rejecters };
-    /*const query = `{
-        organization(login: "prezi") {
-          samlIdentityProvider {
-            externalIdentities(first: 100) {
-              edges {
-                node {
-                  samlIdentity {
-                    nameId
-                  }
-                  user {
-                    login
-                  }
-                }
-              }
-              pageInfo {
-                hasNextPage,
-                endCursor
-              }
-            }
-          }
-        }
-    }`;
-
-    const gres = await octokit.graphql(query);
-    console.log("xxx gres", gres);
-    */
-    /*const emails = await Promise.all(
-        reviews.data
-            // .filter(review => review.state === "APPROVED")
-            .map(async (review) => {
-                const username = review.user != null ? review.user.login : null;
-                console.log("xxx finding email: ", username);
-                if (username == null) {
-                    return Promise.resolve(null);
-                }
-
-                const user = await octokit.request("GET /users/{username}", {
-                    username: username,
-                });
-
-                console.log("xxx email found: ", user.data.email);
-                return Promise.resolve(user.data.email);
-            }),
-    );
-
-
-    console.log("xxx emails: ", emails);
-
-    return emails.filter((e) => e != null) as ReadonlyArray<string>;
-    */
 }
-async function updateComment(owner, repo, prNum, octokit, messageBody) {
+async function updateComment(octokit, messageBody) {
     const messageHead = "Approvals in the following modules are missing:";
-    const newMessage = messageHead + "\n" + messageBody;
-    const comments = await octokit.request("GET /repos/{owner}/{repo}/issues/{issue_number}/comments", {
-        owner: owner,
-        repo: repo,
-        issue_number: +prNum,
-    });
+    const newMessage = messageHead + "\n\n" + messageBody;
+    const comments = await octokit.getComments();
     const ownerComment = comments.data.find((m) => m.body != null && m.body.startsWith(messageHead));
     if (ownerComment != null) {
-        await octokit.request("PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}", {
-            owner: owner,
-            repo: repo,
-            comment_id: ownerComment.id,
-            body: newMessage,
-        });
+        await octokit.updateComment(ownerComment.id, newMessage);
     }
     else {
-        await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
-            owner: owner,
-            repo: repo,
-            issue_number: +prNum,
-            body: newMessage,
-        });
+        await octokit.addComment(newMessage);
     }
 }
+async function doApproverCheckLogic(octokit, headCommitSha) {
+    const ownersManager = new OwnersManager_1.OwnersManager(octokit);
+    const files = await octokit.getFiles();
+    const moduleOwnersMap = new Map();
+    for (const r of files.data) {
+        const result = await ownersManager.collectOwners(r.filename);
+        moduleOwnersMap.set(result.path, result.owners);
+    }
+    const { approvers, rejecters } = await collectApprovers(octokit, headCommitSha);
+    const requireApproveModules = new Map();
+    moduleOwnersMap.forEach((value, key) => {
+        if (value.kind === OwnersManager_1.OwnersKind.list) {
+            const missingApprover = value.list.every((owner) => !approvers.has(owner));
+            const rejecterOfModule = value.list.filter(owner => rejecters.has(owner));
+            if (missingApprover || rejecterOfModule.length > 0) {
+                const needApprovalFrom = { kind: OwnersManager_1.OwnersKind.list, list: rejecterOfModule.length > 0 ? rejecterOfModule : value.list };
+                requireApproveModules.set(key, needApprovalFrom);
+            }
+        }
+        else {
+            if (approvers.size === 0 || rejecters.size > 0) {
+                const needApprovalFrom = rejecters.size > 0 ? { kind: OwnersManager_1.OwnersKind.list, list: [...rejecters] } : { kind: OwnersManager_1.OwnersKind.anyone };
+                requireApproveModules.set(key, needApprovalFrom);
+            }
+        }
+    });
+    let comment = "";
+    if (requireApproveModules.size > 0) {
+        requireApproveModules.forEach((value, key) => {
+            if (value != null) {
+                comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
+            }
+        });
+        await octokit.updateStatus("failure");
+    }
+    else {
+        await octokit.updateStatus("success");
+        comment = "No more approvals are needed";
+    }
+    await updateComment(octokit, comment);
+}
+exports.doApproverCheckLogic = doApproverCheckLogic;
 const run = async () => {
-    // core.debug("Hello World");
     console.log("Start action");
     try {
         const [owner, repo] = core.getInput("repository").split("/");
         const prNum = core.getInput("pr-number");
-        const myToken = core.getInput("myToken");
-        const octokit = github.getOctokit(myToken);
-        const ownersManager = new OwnersManager_1.OwnersManager(owner, repo, prNum, octokit);
+        const token = core.getInput("myToken");
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
-        const response = await octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
-            owner: owner,
-            repo: repo,
-            pull_number: prNum,
-        });
-        const moduleOwnersMap = new Map();
-        for (const r of response.data) {
-            const result = await ownersManager.collectOwners(r.filename);
-            moduleOwnersMap.set(result.path, result.owners);
-        }
-        const { approvers, rejecters } = await collectApprovers(owner, repo, prNum, octokit);
-        console.log("xxx approvers: ", [...approvers]);
-        console.log("xxx rejectes: ", [...rejecters]);
-        const requireApproveModules = [];
-        moduleOwnersMap.forEach((value, key) => {
-            if (value.kind === OwnersManager_1.OwnersKind.list && value.list.every((owner) => !approvers.has(owner))) {
-                requireApproveModules.push(key);
-            }
-        });
-        let comment = "";
-        if (requireApproveModules.length > 0 || rejecters.size > 0) {
-            requireApproveModules.forEach((key) => {
-                const value = moduleOwnersMap.get(key);
-                if (value != null) {
-                    comment += `- ${key}: ${value.kind === OwnersManager_1.OwnersKind.list ? value.list : "anyone"}\n`;
-                }
-            });
-            if (rejecters.size > 0) {
-                comment += "\n\n requested changes: " + [...rejecters];
-            }
-            await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
-                owner: owner,
-                repo: repo,
-                sha: headCommitSha,
-                state: "failure",
-            });
-        }
-        else {
-            await octokit.request("POST /repos/{owner}/{repo}/statuses/{sha}", {
-                owner: owner,
-                repo: repo,
-                sha: headCommitSha,
-                state: "success",
-            });
-            comment = "\n\n No more approvals are needed";
-        }
-        await updateComment(owner, repo, prNum, octokit, comment);
+        const octokit = new OctokitWrapper_1.OctokitWrapper(owner, repo, prNum, headCommitSha, token);
+        await doApproverCheckLogic(octokit, headCommitSha);
     }
     catch (error) {
         core.setFailed(error.message);
