@@ -5902,6 +5902,13 @@ class OctokitWrapper {
             issue_number: +this.prNum,
         });
     }
+    getCommits() {
+        return this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", {
+            owner: this.owner,
+            repo: this.repo,
+            pull_number: +this.prNum
+        });
+    }
     updateComment(commentId, message) {
         return this.octokit.request("PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}", {
             owner: this.owner,
@@ -6071,7 +6078,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.doApproverCheckLogic = exports.calculateModulesRequireApprove = void 0;
+exports.doApproverCheckLogic = exports.calculateRequireApprovePerModules = void 0;
 const core = __importStar(__nccwpck_require__(374));
 const github = __importStar(__nccwpck_require__(94));
 const CommentFormatter_1 = __nccwpck_require__(249);
@@ -6126,7 +6133,7 @@ var ApproveState;
     ApproveState["oneCommitter"] = "oneCommitter";
     ApproveState["noApprove"] = "noApprove";
 })(ApproveState || (ApproveState = {}));
-function calculateModulesRequireApprove(approvers, rejecters, committers, moduleOwnersMap) {
+function calculateRequireApprovePerModules(approvers, rejecters, committers, moduleOwnersMap) {
     const requireApproveModules = new Map();
     moduleOwnersMap.forEach((value, key) => {
         if (value.kind === OwnersManager_1.OwnersKind.list) {
@@ -6134,6 +6141,7 @@ function calculateModulesRequireApprove(approvers, rejecters, committers, module
             const nonCommiterApproversOfModule = approversOfModule.filter(a => !committers.has(a));
             const rejecterOfModule = value.list.filter(owner => rejecters.has(owner));
             let approveState;
+            let needMoreApprove = false;
             if (nonCommiterApproversOfModule.length > 0 || approversOfModule.length > 1) {
                 approveState = ApproveState.approved;
             }
@@ -6145,25 +6153,30 @@ function calculateModulesRequireApprove(approvers, rejecters, committers, module
             }
             let requireApproval = [];
             if (approveState === ApproveState.noApprove) {
+                needMoreApprove = true;
                 requireApproval = value.list;
             }
             else if (approveState === ApproveState.oneCommitter) {
+                needMoreApprove = true;
                 requireApproval = value.list.filter(v => v !== approversOfModule[0]);
             }
             if (rejecterOfModule.length > 0) {
+                needMoreApprove = true;
                 if (rejecterOfModule.length === 1 && committers.has(rejecterOfModule[0])) {
                     if (approveState === ApproveState.oneCommitter && approversOfModule[0] !== rejecterOfModule[0]) {
                         requireApproval = rejecterOfModule;
                     }
                     else {
-                        requireApproval = [...requireApproval.filter(v => v !== rejecterOfModule[0], rejecterOfModule[0])];
+                        requireApproval = [...requireApproval.filter(v => v !== rejecterOfModule[0]), rejecterOfModule[0]];
                     }
                 }
                 else {
                     requireApproval = rejecterOfModule;
                 }
             }
-            requireApproveModules.set(key, requireApproval.length > 0 ? { kind: OwnersManager_1.OwnersKind.list, list: requireApproval } : { kind: OwnersManager_1.OwnersKind.anyone });
+            if (needMoreApprove) {
+                requireApproveModules.set(key, requireApproval.length > 0 ? { kind: OwnersManager_1.OwnersKind.list, list: requireApproval } : { kind: OwnersManager_1.OwnersKind.anyone });
+            }
         }
         else if (value.kind === OwnersManager_1.OwnersKind.anyone) {
             if (rejecters.size > 0) {
@@ -6178,7 +6191,7 @@ function calculateModulesRequireApprove(approvers, rejecters, committers, module
     });
     return requireApproveModules;
 }
-exports.calculateModulesRequireApprove = calculateModulesRequireApprove;
+exports.calculateRequireApprovePerModules = calculateRequireApprovePerModules;
 async function doApproverCheckLogic(octokit, headCommitSha, commentFormatter) {
     const ownersManager = new OwnersManager_1.OwnersManager(octokit);
     const files = await octokit.getFiles();
@@ -6189,7 +6202,7 @@ async function doApproverCheckLogic(octokit, headCommitSha, commentFormatter) {
     }
     const { approvers, rejecters } = await collectApprovers(octokit, headCommitSha);
     const committers = await collectCommitters(octokit);
-    const requireApproveModules = calculateModulesRequireApprove(approvers, rejecters, committers, moduleOwnersMap);
+    const requireApproveModules = calculateRequireApprovePerModules(approvers, rejecters, committers, moduleOwnersMap);
     let comment = "";
     if (requireApproveModules.size > 0) {
         const pathUserData = [];
