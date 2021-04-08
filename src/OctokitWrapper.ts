@@ -29,6 +29,14 @@ export class OctokitWrapper {
 		});
 	}
 
+	public getCommits() {
+		return this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", {
+			owner: this.owner,
+			repo: this.repo,
+			pull_number: +this.prNum
+		 });
+	}
+
 	public updateComment(commentId: number, message: string) {
 		return this.octokit.request("PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}", {
 			owner: this.owner,

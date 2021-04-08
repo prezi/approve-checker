@@ -43,6 +43,13 @@ class OctokitWrapper {
             issue_number: +this.prNum,
         });
     }
+    getCommits() {
+        return this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", {
+            owner: this.owner,
+            repo: this.repo,
+            pull_number: +this.prNum
+        });
+    }
     updateComment(commentId, message) {
         return this.octokit.request("PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}", {
             owner: this.owner,

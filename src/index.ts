@@ -15,10 +15,11 @@ async function collectApprovers(
 		const user = review.user;
 		if (user != null) {
 			const key = user.login;
-			if (review.state === "APPROVED" && review.commit_id === headCommitSha) {
+			if ((review.commit_id === headCommitSha) &&
+				(review.state === "APPROVED" || (review.state === "COMMENTED" && review.body.toLowerCase().startsWith("approved")))
+			) {
 				approvers.add(key);
 				rejecters.delete(key);
-
 			} else if (review.state === "CHANGES_REQUESTED") {
 				approvers.delete(key);
 				rejecters.add(key);
@@ -45,6 +46,89 @@ async function updateComment(
 	}
 }
 
+async function collectCommitters(octokit: OctokitWrapper): Promise<Set<string>> {
+	const commits = await octokit.getCommits();
+	const committers = new Set<string>();
+	commits.data.forEach(commit => {
+		if (commit.author != null) {
+			committers.add(commit.author.login)
+		}
+	});
+
+	return committers;
+}
+
+enum ApproveState {
+	approved = "approved",
+	oneCommitter = "oneCommitter",
+	noApprove = "noApprove"
+}
+
+export function calculateRequireApprovePerModules(
+	approvers: Set<string>,
+	rejecters: Set<string>,
+	committers: Set<string>,
+	moduleOwnersMap: Map<string, Owners>
+): Map<string, Owners> {
+	const requireApproveModules: Map<string, Owners> = new Map();
+
+	moduleOwnersMap.forEach((value, key) => {
+		if (value.kind === OwnersKind.list) {
+			const approversOfModule = value.list.filter(owner => approvers.has(owner));
+			const nonCommiterApproversOfModule = approversOfModule.filter(a => !committers.has(a));
+			const rejecterOfModule = value.list.filter(owner => rejecters.has(owner));
+
+			let approveState: ApproveState;
+			let needMoreApprove = false;
+			if (nonCommiterApproversOfModule.length > 0 || approversOfModule.length > 1) {
+				approveState = ApproveState.approved;
+			} else if (approversOfModule.length === 0) {
+				approveState = ApproveState.noApprove;
+			} else {
+				approveState = ApproveState.oneCommitter;
+			}
+
+			let requireApproval: ReadonlyArray<string> = [];
+			if (approveState === ApproveState.noApprove) {
+				needMoreApprove = true;
+				requireApproval = value.list;
+			} else if (approveState === ApproveState.oneCommitter) {
+				needMoreApprove = true;
+				requireApproval = value.list.filter(v => v !== approversOfModule[0])
+			}
+
+			if (rejecterOfModule.length > 0) {
+				needMoreApprove = true;
+				if (rejecterOfModule.length === 1 && committers.has(rejecterOfModule[0])) {
+					if (approveState === ApproveState.oneCommitter && approversOfModule[0] !== rejecterOfModule[0]) {
+						requireApproval = rejecterOfModule;
+					} else {
+						requireApproval = [...requireApproval.filter(v => v !== rejecterOfModule[0]), rejecterOfModule[0]]
+					}
+				} else {
+					requireApproval = rejecterOfModule;
+				}
+			}
+
+			if (needMoreApprove) {
+				requireApproveModules.set(key, requireApproval.length > 0 ? {kind: OwnersKind.list, list: requireApproval} : {kind: OwnersKind.anyone});
+			}
+		} else if (value.kind === OwnersKind.anyone) {
+			if (rejecters.size > 0) {
+				requireApproveModules.set(key, {kind: OwnersKind.list, list: [...rejecters]});
+			} else if (approvers.size < 2) {
+				if ((approvers.size === 0) || (approvers.size === 1 && committers.has([...approvers][0]))) {
+					requireApproveModules.set(key, {kind: OwnersKind.anyone});
+				}
+			}
+		}
+
+	});
+
+	return requireApproveModules;
+
+}
+
 export async function doApproverCheckLogic(octokit: OctokitWrapper, headCommitSha: string, commentFormatter: CommentFormatter) {
 	const ownersManager = new OwnersManager(octokit);
 
@@ -58,24 +142,10 @@ export async function doApproverCheckLogic(octokit: OctokitWrapper, headCommitSh
 	}
 
 	const {approvers, rejecters} = await collectApprovers(octokit, headCommitSha);
+	const committers = await collectCommitters(octokit);
 
-	const requireApproveModules: Map<string, Owners> = new Map();
-	moduleOwnersMap.forEach((value, key) => {
-		if (value.kind === OwnersKind.list) {
-			const missingApprover = value.list.every((owner) => !approvers.has(owner));
-			const rejecterOfModule = value.list.filter(owner => rejecters.has(owner))
+	const requireApproveModules = calculateRequireApprovePerModules(approvers, rejecters, committers, moduleOwnersMap);
 
-			if (missingApprover || rejecterOfModule.length > 0) {
-				const needApprovalFrom: Owners = {kind: OwnersKind.list,  list: rejecterOfModule.length > 0 ? rejecterOfModule : value.list};
-				requireApproveModules.set(key, needApprovalFrom);
-			}
-		} else {
-			if (approvers.size === 0 || rejecters.size > 0) {
-				const needApprovalFrom: Owners = rejecters.size > 0 ? {kind: OwnersKind.list, list: [...rejecters]} : {kind: OwnersKind.anyone}
-				requireApproveModules.set(key, needApprovalFrom);
-			}
-		}
-	});
 
 	let comment = "";
 	if (requireApproveModules.size > 0) {

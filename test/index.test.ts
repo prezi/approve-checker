@@ -94,6 +94,10 @@ class OctokitMock {
 		return { data: [] };
 	}
 
+	public getCommits() {
+		return { data: [] };
+	}
+
 	public updateComment(_: number, comment: string) {
 		this.comment = comment;
 	}
@@ -613,7 +617,6 @@ describe("Test the full flow", () => {
 				status: "failure"
 			}
 		},
-
 	];
 
 	testCases.forEach(tc => {

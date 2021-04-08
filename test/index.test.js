@@ -56,6 +56,9 @@ class OctokitMock {
     getComments() {
         return { data: [] };
     }
+    getCommits() {
+        return { data: [] };
+    }
     updateComment(_, comment) {
         this.comment = comment;
     }
