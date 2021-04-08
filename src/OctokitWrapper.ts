@@ -8,7 +8,7 @@ export class OctokitWrapper {
 		private repo: string,
 		private prNum: string,
 		private headCommitSha: string,
-		token: string
+		token: string,
 	) {
 		this.octokit = github.getOctokit(token);
 	}
@@ -33,8 +33,8 @@ export class OctokitWrapper {
 		return this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", {
 			owner: this.owner,
 			repo: this.repo,
-			pull_number: +this.prNum
-		 });
+			pull_number: +this.prNum,
+		});
 	}
 
 	public updateComment(commentId: number, message: string) {
@@ -43,7 +43,7 @@ export class OctokitWrapper {
 			repo: this.repo,
 			comment_id: commentId,
 			body: message,
-		})
+		});
 	}
 
 	public addComment(message: string) {
@@ -56,25 +56,19 @@ export class OctokitWrapper {
 	}
 
 	public getFiles() {
-		return this.octokit.request(
-			"GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files",
-			{
-				owner: this.owner,
-				repo: this.repo,
-				pull_number: this.prNum,
-			},
-		);
+		return this.octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
+			owner: this.owner,
+			repo: this.repo,
+			pull_number: this.prNum,
+		});
 	}
 
 	public getFileContent(path: string) {
-		return this.octokit.request(
-			"GET /repos/{owner}/{repo}/contents/{path}",
-			{
-				owner: this.owner,
-				repo: this.repo,
-				path: path,
-			},
-		);
+		return this.octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
+			owner: this.owner,
+			repo: this.repo,
+			path: path,
+		});
 	}
 
 	public updateStatus(state: "failure" | "success") {
@@ -85,6 +79,4 @@ export class OctokitWrapper {
 			state: state,
 		});
 	}
-
-
 }

@@ -1,22 +1,24 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { CommentFormatter, PathUserData, TableCommentFormatter } from "./CommentFormatter";
-import { OctokitWrapper } from "./OctokitWrapper";
+import {CommentFormatter, PathUserData, TableCommentFormatter} from "./CommentFormatter";
+import {OctokitWrapper} from "./OctokitWrapper";
 import {Owners, OwnersKind, OwnersManager} from "./OwnersManager";
 
 async function collectApprovers(
 	octokit: OctokitWrapper,
 	headCommitSha: string,
-): Promise<{approvers: Set<string>, rejecters: Set<string>}> {
+): Promise<{approvers: Set<string>; rejecters: Set<string>}> {
 	const reviews = await octokit.getReviews();
 	const approvers = new Set<string>();
 	const rejecters = new Set<string>();
-	reviews.data.forEach(review => {
+	reviews.data.forEach((review) => {
 		const user = review.user;
 		if (user != null) {
 			const key = user.login;
-			if ((review.commit_id === headCommitSha) &&
-				(review.state === "APPROVED" || (review.state === "COMMENTED" && review.body.toLowerCase().startsWith("approved")))
+			if (
+				review.commit_id === headCommitSha &&
+				(review.state === "APPROVED" ||
+					(review.state === "COMMENTED" && review.body.toLowerCase().startsWith("approved")))
 			) {
 				approvers.add(key);
 				rejecters.delete(key);
@@ -30,10 +32,7 @@ async function collectApprovers(
 	return {approvers, rejecters};
 }
 
-async function updateComment(
-	octokit: OctokitWrapper,
-	messageBody: string,
-) {
+async function updateComment(octokit: OctokitWrapper, messageBody: string) {
 	const messageHead = "Approvals in the following modules are missing:";
 	const newMessage = messageHead + "\n\n" + messageBody;
 
@@ -49,9 +48,9 @@ async function updateComment(
 async function collectCommitters(octokit: OctokitWrapper): Promise<Set<string>> {
 	const commits = await octokit.getCommits();
 	const committers = new Set<string>();
-	commits.data.forEach(commit => {
+	commits.data.forEach((commit) => {
 		if (commit.author != null) {
-			committers.add(commit.author.login)
+			committers.add(commit.author.login);
 		}
 	});
 
@@ -61,22 +60,22 @@ async function collectCommitters(octokit: OctokitWrapper): Promise<Set<string>> 
 enum ApproveState {
 	approved = "approved",
 	oneCommitter = "oneCommitter",
-	noApprove = "noApprove"
+	noApprove = "noApprove",
 }
 
 export function calculateRequireApprovePerModules(
 	approvers: Set<string>,
 	rejecters: Set<string>,
 	committers: Set<string>,
-	moduleOwnersMap: Map<string, Owners>
+	moduleOwnersMap: Map<string, Owners>,
 ): Map<string, Owners> {
 	const requireApproveModules: Map<string, Owners> = new Map();
 
 	moduleOwnersMap.forEach((value, key) => {
 		if (value.kind === OwnersKind.list) {
-			const approversOfModule = value.list.filter(owner => approvers.has(owner));
-			const nonCommiterApproversOfModule = approversOfModule.filter(a => !committers.has(a));
-			const rejecterOfModule = value.list.filter(owner => rejecters.has(owner));
+			const approversOfModule = value.list.filter((owner) => approvers.has(owner));
+			const nonCommiterApproversOfModule = approversOfModule.filter((a) => !committers.has(a));
+			const rejecterOfModule = value.list.filter((owner) => rejecters.has(owner));
 
 			let approveState: ApproveState;
 			let needMoreApprove = false;
@@ -94,7 +93,7 @@ export function calculateRequireApprovePerModules(
 				requireApproval = value.list;
 			} else if (approveState === ApproveState.oneCommitter) {
 				needMoreApprove = true;
-				requireApproval = value.list.filter(v => v !== approversOfModule[0])
+				requireApproval = value.list.filter((v) => v !== approversOfModule[0]);
 			}
 
 			if (rejecterOfModule.length > 0) {
@@ -103,7 +102,10 @@ export function calculateRequireApprovePerModules(
 					if (approveState === ApproveState.oneCommitter && approversOfModule[0] !== rejecterOfModule[0]) {
 						requireApproval = rejecterOfModule;
 					} else {
-						requireApproval = [...requireApproval.filter(v => v !== rejecterOfModule[0]), rejecterOfModule[0]]
+						requireApproval = [
+							...requireApproval.filter((v) => v !== rejecterOfModule[0]),
+							rejecterOfModule[0],
+						];
 					}
 				} else {
 					requireApproval = rejecterOfModule;
@@ -111,25 +113,32 @@ export function calculateRequireApprovePerModules(
 			}
 
 			if (needMoreApprove) {
-				requireApproveModules.set(key, requireApproval.length > 0 ? {kind: OwnersKind.list, list: requireApproval} : {kind: OwnersKind.anyone});
+				requireApproveModules.set(
+					key,
+					requireApproval.length > 0
+						? {kind: OwnersKind.list, list: requireApproval}
+						: {kind: OwnersKind.anyone},
+				);
 			}
 		} else if (value.kind === OwnersKind.anyone) {
 			if (rejecters.size > 0) {
 				requireApproveModules.set(key, {kind: OwnersKind.list, list: [...rejecters]});
 			} else if (approvers.size < 2) {
-				if ((approvers.size === 0) || (approvers.size === 1 && committers.has([...approvers][0]))) {
+				if (approvers.size === 0 || (approvers.size === 1 && committers.has([...approvers][0]))) {
 					requireApproveModules.set(key, {kind: OwnersKind.anyone});
 				}
 			}
 		}
-
 	});
 
 	return requireApproveModules;
-
 }
 
-export async function doApproverCheckLogic(octokit: OctokitWrapper, headCommitSha: string, commentFormatter: CommentFormatter) {
+export async function doApproverCheckLogic(
+	octokit: OctokitWrapper,
+	headCommitSha: string,
+	commentFormatter: CommentFormatter,
+) {
 	const ownersManager = new OwnersManager(octokit);
 
 	const files = await octokit.getFiles();
@@ -146,17 +155,16 @@ export async function doApproverCheckLogic(octokit: OctokitWrapper, headCommitSh
 
 	const requireApproveModules = calculateRequireApprovePerModules(approvers, rejecters, committers, moduleOwnersMap);
 
-
 	let comment = "";
 	if (requireApproveModules.size > 0) {
 		const pathUserData: PathUserData[] = [];
 		requireApproveModules.forEach((value, key) => {
 			if (value != null) {
-				pathUserData.push({path: key, users: value.kind === OwnersKind.list ? value.list : ["anyone"]})
+				pathUserData.push({path: key, users: value.kind === OwnersKind.list ? value.list : ["anyone"]});
 				// comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
 			}
 		});
-		comment = commentFormatter.format(pathUserData)
+		comment = commentFormatter.format(pathUserData);
 
 		await octokit.updateStatus("failure");
 	} else {
@@ -172,10 +180,10 @@ const run = async (): Promise<void> => {
 		const [owner, repo] = core.getInput("repository").split("/");
 		const prNum = core.getInput("pr-number");
 		const token = core.getInput("myToken");
-		const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
-		const octokit = new OctokitWrapper(owner, repo,prNum, headCommitSha, token);
+		const headCommitSha =
+			github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
+		const octokit = new OctokitWrapper(owner, repo, prNum, headCommitSha, token);
 		await doApproverCheckLogic(octokit, headCommitSha, new TableCommentFormatter());
-
 	} catch (error) {
 		core.setFailed(error.message);
 	}

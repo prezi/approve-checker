@@ -47,7 +47,7 @@ class OctokitWrapper {
         return this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", {
             owner: this.owner,
             repo: this.repo,
-            pull_number: +this.prNum
+            pull_number: +this.prNum,
         });
     }
     updateComment(commentId, message) {

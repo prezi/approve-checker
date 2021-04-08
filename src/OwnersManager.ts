@@ -1,6 +1,6 @@
 import * as OctokitTypes from "@octokit/types";
 import * as Path from "path";
-import { OctokitWrapper } from "./OctokitWrapper";
+import {OctokitWrapper} from "./OctokitWrapper";
 
 export enum OwnersKind {
 	anyone = "anyone",
@@ -35,9 +35,7 @@ const ownersfile = "OWNERS";
 
 export class OwnersManager {
 	private pathOwnersCache: Map<string, OwnersData>;
-	public constructor(
-		private octokit: OctokitWrapper,
-	) {
+	public constructor(private octokit: OctokitWrapper) {
 		this.pathOwnersCache = new Map<string, OwnersData>();
 	}
 
@@ -83,9 +81,10 @@ export class OwnersManager {
 		try {
 			const ownersResponse: OctokitTypes.OctokitResponse<any> = await this.octokit.getFileContent(path);
 			const buff = Buffer.from(ownersResponse.data.content, "base64");
-			const list = buff.toString("ascii")
+			const list = buff
+				.toString("ascii")
 				.split("\n")
-				.filter(line => line !== "" && !line.startsWith("#"))
+				.filter((line) => line !== "" && !line.startsWith("#"));
 			this.saveListInCache(path, origPath, list);
 			return {owners: list, path};
 		} catch (e) {

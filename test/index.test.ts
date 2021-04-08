@@ -1,6 +1,6 @@
 import {OwnersManager, OwnersKind, Owners} from "../src/OwnersManager";
-import {doApproverCheckLogic} from "../src/index"
-import { SimpleCommentFormatter } from "../src/CommentFormatter";
+import {doApproverCheckLogic} from "../src/index";
+import {SimpleCommentFormatter} from "../src/CommentFormatter";
 
 interface OwnerResult {
 	data: {
@@ -9,7 +9,7 @@ interface OwnerResult {
 }
 
 interface FileResult {
-	data: ReadonlyArray<{ filename: string }>
+	data: ReadonlyArray<{filename: string}>;
 }
 
 const noFiles = {data: []};
@@ -17,11 +17,12 @@ const noFiles = {data: []};
 interface ApproverResult {
 	data: ReadonlyArray<{
 		user: {
-			login: string
-		},
-		state: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED",
-		commit_id: string
-	}>
+			login: string;
+		};
+		state: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED";
+		commit_id: string;
+		body?: string;
+	}>;
 }
 
 const noApprovers = {data: []};
@@ -60,23 +61,21 @@ const Test1: TestMockSetup = {
 	]),
 	approvers: noApprovers,
 	changedFiles: noFiles,
-	headCommitSha: ""
-}
+	headCommitSha: "",
+};
 
 const Test2: TestMockSetup = {
 	ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
 	approvers: noApprovers,
 	changedFiles: noFiles,
-	headCommitSha: ""
+	headCommitSha: "",
 };
 
 class OctokitMock {
 	private cnt = 0;
 	private status: "failure" | "nothing" | "success" = "nothing";
 	private comment = "";
-	constructor(
-		private mockSetup: TestMockSetup,
-	) {}
+	constructor(private mockSetup: TestMockSetup) {}
 	get counter() {
 		return this.cnt;
 	}
@@ -91,11 +90,11 @@ class OctokitMock {
 	}
 
 	public getComments() {
-		return { data: [] };
+		return {data: []};
 	}
 
 	public getCommits() {
-		return { data: [] };
+		return {data: []};
 	}
 
 	public updateComment(_: number, comment: string) {
@@ -195,7 +194,12 @@ describe("Test ownersfile lookup", () => {
 	});
 
 	it("No owners at all", async () => {
-		const octokitMock = new OctokitMock({approvers: noApprovers, changedFiles: noFiles, ownersfileData: new Map(), headCommitSha: ""});
+		const octokitMock = new OctokitMock({
+			approvers: noApprovers,
+			changedFiles: noFiles,
+			ownersfileData: new Map(),
+			headCommitSha: "",
+		});
 		const ownersManager = new OwnersManager(octokitMock as any);
 		const res1 = await ownersManager.collectOwners("moduleA/dir1/source.js");
 		const res2 = await ownersManager.collectOwners("moduleA/dir1/anotherSource.js");
@@ -228,13 +232,13 @@ interface TestCase {
 	name: string;
 	initialData: TestMockSetup;
 	expect: {
-		status:  "failure" | "nothing" | "success",
+		status: "failure" | "nothing" | "success";
 		comment: string;
-	}
+	};
 }
 
 const noMoreApprovalNeededComment = "Approvals in the following modules are missing:\n\nNo more approvals are needed";
-const approvalsNeededComment = (data: {path: string, users: string[]}[]): string => {
+const approvalsNeededComment = (data: {path: string; users: string[]}[]): string => {
 	const msg = data.reduce<string>((val, d) => val + `- ${d.path}: ${d.users}\n`, "");
 	return `Approvals in the following modules are missing:\n\n${msg}`;
 };
@@ -244,382 +248,342 @@ describe("Test the full flow", () => {
 		{
 			name: "one approve",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
+				ownersfileData: new Map<string, OwnerResult>([
 					["OWNERS", {data: {content: userABase64}}],
 					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}]},
 				approvers: {data: [{user: {login: userA}, state: "APPROVED", commit_id: "1"}]},
-				headCommitSha: "1"
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: noMoreApprovalNeededComment,
-				status: "success"
-			}
+				status: "success",
+			},
 		},
 
 		{
 			name: "one approve is missing",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
+				ownersfileData: new Map<string, OwnerResult>([
 					["OWNERS", {data: {content: userABase64}}],
 					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
 				]),
-				changedFiles: {data: [
-					{filename: "moduleA/index.js"},
-					{filename: "index.js"},
-				]},
+				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: [{user: {login: userB}, state: "APPROVED", commit_id: "1"}]},
-				headCommitSha: "1"
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: approvalsNeededComment([{path: ".", users: [userA]}]),
-				status: "failure"
-			}
+				status: "failure",
+			},
 		},
 
 		{
 			name: "no approve - one file changed",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
+				ownersfileData: new Map<string, OwnerResult>([
 					["OWNERS", {data: {content: userABase64}}],
 					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}]},
 				approvers: {data: []},
-				headCommitSha: "1"
+				headCommitSha: "1",
 			},
 			expect: {
-				comment: approvalsNeededComment([
-					{path: "moduleA", users: [userA, userB]},
-				]),
-				status: "failure"
-			}
+				comment: approvalsNeededComment([{path: "moduleA", users: [userA, userB]}]),
+				status: "failure",
+			},
 		},
 
 		{
 			name: "no approve - two files changed",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
+				ownersfileData: new Map<string, OwnerResult>([
 					["OWNERS", {data: {content: userABase64}}],
 					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
 				]),
-				changedFiles: {data: [
-					{filename: "moduleA/index.js"},
-					{filename: "index.js"}
-				]},
+				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: []},
-				headCommitSha: "1"
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: approvalsNeededComment([
 					{path: "moduleA", users: [userA, userB]},
 					{path: ".", users: [userA]},
 				]),
-				status: "failure"
-			}
+				status: "failure",
+			},
 		},
 
 		{
 			name: "approver approved then requested change",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
+				ownersfileData: new Map<string, OwnerResult>([
 					["OWNERS", {data: {content: userABase64}}],
 					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}]},
-				approvers: {data: [
-					{user: {login: userB}, state: "APPROVED", commit_id: "1"},
-					{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				approvers: {
+					data: [
+						{user: {login: userB}, state: "APPROVED", commit_id: "1"},
+						{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
+					],
+				},
+				headCommitSha: "1",
 			},
 			expect: {
-				comment: approvalsNeededComment([
-					{path: "moduleA", users: [userB]},
-				]),
-				status: "failure"
-			}
+				comment: approvalsNeededComment([{path: "moduleA", users: [userB]}]),
+				status: "failure",
+			},
 		},
 
 		{
 			name: "approver approved then requested change then approved again",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
+				ownersfileData: new Map<string, OwnerResult>([
 					["OWNERS", {data: {content: userABase64}}],
 					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}]},
-				approvers: {data: [
-					{user: {login: userB}, state: "APPROVED", commit_id: "1"},
-					{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
-					{user: {login: userB}, state: "APPROVED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				approvers: {
+					data: [
+						{user: {login: userB}, state: "APPROVED", commit_id: "1"},
+						{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
+						{user: {login: userB}, state: "APPROVED", commit_id: "1"},
+					],
+				},
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: noMoreApprovalNeededComment,
-				status: "success"
-			}
+				status: "success",
+			},
 		},
 
 		{
 			name: "One module has no Owners file - no approve at all",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "moduleA/index.js"},
-					{filename: "index.js"},
-				]},
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: []},
-				headCommitSha: "1"
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: approvalsNeededComment([
 					{path: "moduleA", users: [userA, userB]},
 					{path: ".", users: ["anyone"]},
 				]),
-				status: "failure"
-			}
+				status: "failure",
+			},
 		},
 
 		{
 			name: "One module has no Owners file - approve comes from other module",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "moduleA/index.js"},
-					{filename: "index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userB}, state: "APPROVED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
+				approvers: {data: [{user: {login: userB}, state: "APPROVED", commit_id: "1"}]},
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: noMoreApprovalNeededComment,
-				status: "success"
-			}
+				status: "success",
+			},
 		},
 
 		{
 			name: "One module has no Owners file - multiple changes - third user approved",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "moduleA/index.js"},
-					{filename: "index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userNotInOwnersfile}, state: "APPROVED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
+				approvers: {data: [{user: {login: userNotInOwnersfile}, state: "APPROVED", commit_id: "1"}]},
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: approvalsNeededComment([{path: "moduleA", users: [userA, userB]}]),
-				status: "failure"
-			}
+				status: "failure",
+			},
 		},
 
 		{
 			name: "One moudle has no Owners file - change from that module - third user approved",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userNotInOwnersfile}, state: "APPROVED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "index.js"}]},
+				approvers: {data: [{user: {login: userNotInOwnersfile}, state: "APPROVED", commit_id: "1"}]},
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: noMoreApprovalNeededComment,
-				status: "success"
-			}
+				status: "success",
+			},
 		},
 
 		{
 			name: "One moudle has no Owners file - third user requested change",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "index.js"},
-					{filename: "moduleA/index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userNotInOwnersfile}, state: "CHANGES_REQUESTED", commit_id: "1"},
-					{user: {login: userA}, state: "APPROVED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "index.js"}, {filename: "moduleA/index.js"}]},
+				approvers: {
+					data: [
+						{user: {login: userNotInOwnersfile}, state: "CHANGES_REQUESTED", commit_id: "1"},
+						{user: {login: userA}, state: "APPROVED", commit_id: "1"},
+					],
+				},
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: approvalsNeededComment([{path: ".", users: [userNotInOwnersfile]}]),
-				status: "failure"
-			}
+				status: "failure",
+			},
 		},
 
 		{
 			name: "Non owner approval doesn't count",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
+				ownersfileData: new Map<string, OwnerResult>([
 					["moduleA/OWNERS", {data: {content: userABase64}}],
 					["./OWNERS", {data: {content: userAuserBBase64}}],
 				]),
-				changedFiles: {data: [
-					{filename: "moduleA/index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userB}, state: "APPROVED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				changedFiles: {data: [{filename: "moduleA/index.js"}]},
+				approvers: {data: [{user: {login: userB}, state: "APPROVED", commit_id: "1"}]},
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: approvalsNeededComment([{path: "moduleA", users: [userA]}]),
-				status: "failure"
-			}
+				status: "failure",
+			},
 		},
 
 		{
 			name: "Two rejecters",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["./OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userA}, state: "CHANGES_REQUESTED", commit_id: "1"},
-					{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				ownersfileData: new Map<string, OwnerResult>([["./OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "index.js"}]},
+				approvers: {
+					data: [
+						{user: {login: userA}, state: "CHANGES_REQUESTED", commit_id: "1"},
+						{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
+					],
+				},
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: approvalsNeededComment([{path: ".", users: [userA, userB]}]),
-				status: "failure"
-			}
+				status: "failure",
+			},
 		},
 
 		{
 			name: "Two rejecter then one approver",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["./OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userA}, state: "CHANGES_REQUESTED", commit_id: "1"},
-					{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
-					{user: {login: userB}, state: "APPROVED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				ownersfileData: new Map<string, OwnerResult>([["./OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "index.js"}]},
+				approvers: {
+					data: [
+						{user: {login: userA}, state: "CHANGES_REQUESTED", commit_id: "1"},
+						{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
+						{user: {login: userB}, state: "APPROVED", commit_id: "1"},
+					],
+				},
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: approvalsNeededComment([{path: ".", users: [userA]}]),
-				status: "failure"
-			}
+				status: "failure",
+			},
 		},
 
 		{
 			name: "Two rejecter then two approver",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["./OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userA}, state: "CHANGES_REQUESTED", commit_id: "1"},
-					{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
-					{user: {login: userB}, state: "APPROVED", commit_id: "1"},
-					{user: {login: userA}, state: "APPROVED", commit_id: "1"},
-				]},
-				headCommitSha: "1"
+				ownersfileData: new Map<string, OwnerResult>([["./OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "index.js"}]},
+				approvers: {
+					data: [
+						{user: {login: userA}, state: "CHANGES_REQUESTED", commit_id: "1"},
+						{user: {login: userB}, state: "CHANGES_REQUESTED", commit_id: "1"},
+						{user: {login: userB}, state: "APPROVED", commit_id: "1"},
+						{user: {login: userA}, state: "APPROVED", commit_id: "1"},
+					],
+				},
+				headCommitSha: "1",
 			},
 			expect: {
 				comment: noMoreApprovalNeededComment,
-				status: "success"
-			}
+				status: "success",
+			},
 		},
 
 		{
 			name: "New commit after approve",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userA}, state: "APPROVED", commit_id: "1"},
-				]},
-				headCommitSha: "2"
+				ownersfileData: new Map<string, OwnerResult>([["OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "index.js"}]},
+				approvers: {data: [{user: {login: userA}, state: "APPROVED", commit_id: "1"}]},
+				headCommitSha: "2",
 			},
 			expect: {
 				comment: approvalsNeededComment([{path: ".", users: [userA, userB]}]),
-				status: "failure"
-			}
+				status: "failure",
+			},
 		},
 
 		{
 			name: "New commit after approve different user approves next",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userA}, state: "APPROVED", commit_id: "1"},
-					{user: {login: userB}, state: "APPROVED", commit_id: "2"},
-				]},
-				headCommitSha: "2"
+				ownersfileData: new Map<string, OwnerResult>([["OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "index.js"}]},
+				approvers: {
+					data: [
+						{user: {login: userA}, state: "APPROVED", commit_id: "1"},
+						{user: {login: userB}, state: "APPROVED", commit_id: "2"},
+					],
+				},
+				headCommitSha: "2",
 			},
 			expect: {
 				comment: noMoreApprovalNeededComment,
-				status: "success"
-			}
+				status: "success",
+			},
 		},
 
 		{
 			name: "Request change then commit then other user approved",
 			initialData: {
-				ownersfileData:  new Map<string, OwnerResult>([
-					["OWNERS", {data: {content: userAuserBBase64}}],
-				]),
-				changedFiles: {data: [
-					{filename: "index.js"},
-				]},
-				approvers: {data: [
-					{user: {login: userA}, state: "CHANGES_REQUESTED", commit_id: "1"},
-					{user: {login: userB}, state: "APPROVED", commit_id: "2"},
-				]},
-				headCommitSha: "2"
+				ownersfileData: new Map<string, OwnerResult>([["OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "index.js"}]},
+				approvers: {
+					data: [
+						{user: {login: userA}, state: "CHANGES_REQUESTED", commit_id: "1"},
+						{user: {login: userB}, state: "APPROVED", commit_id: "2"},
+					],
+				},
+				headCommitSha: "2",
 			},
 			expect: {
 				comment: approvalsNeededComment([{path: ".", users: [userA]}]),
-				status: "failure"
-			}
+				status: "failure",
+			},
+		},
+
+		{
+			name: "Approved comment also approves",
+			initialData: {
+				ownersfileData: new Map<string, OwnerResult>([["OWNERS", {data: {content: userAuserBBase64}}]]),
+				changedFiles: {data: [{filename: "index.js"}]},
+				approvers: {data: [{user: {login: userB}, state: "COMMENTED", commit_id: "2", body: "approved"}]},
+				headCommitSha: "2",
+			},
+			expect: {
+				comment: noMoreApprovalNeededComment,
+				status: "success",
+			},
 		},
 	];
 
-	testCases.forEach(tc => {
+	testCases.forEach((tc) => {
 		it(tc.name, async () => {
 			const om = new OctokitMock(tc.initialData);
 			expect(om.getStatus()).toBe("nothing");
@@ -628,6 +592,6 @@ describe("Test the full flow", () => {
 			if (tc.expect.comment != "") {
 				expect(om.getComment()).toBe(tc.expect.comment);
 			}
-		})
-	})
-})
+		});
+	});
+});

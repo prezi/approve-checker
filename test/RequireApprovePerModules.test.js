@@ -10,7 +10,7 @@ describe("Require approves per modules", () => {
             rejecters: [],
             committers: ["userX"],
             owners: ["userA", "userB"],
-            expect: "empty"
+            expect: "empty",
         },
         {
             name: "one commiter approve",
@@ -18,7 +18,7 @@ describe("Require approves per modules", () => {
             rejecters: [],
             committers: ["userA"],
             owners: ["userA", "userB"],
-            expect: ["userB"]
+            expect: ["userB"],
         },
         {
             name: "two commiter approve",
@@ -26,7 +26,7 @@ describe("Require approves per modules", () => {
             rejecters: [],
             committers: ["userA", "userB"],
             owners: ["userA", "userB"],
-            expect: "empty"
+            expect: "empty",
         },
         {
             name: "commiter reject",
@@ -34,7 +34,7 @@ describe("Require approves per modules", () => {
             rejecters: ["userB"],
             committers: ["userB"],
             owners: ["userA", "userB"],
-            expect: ["userA", "userB"]
+            expect: ["userA", "userB"],
         },
         {
             name: "commiter rejected other owner approved",
@@ -42,7 +42,7 @@ describe("Require approves per modules", () => {
             rejecters: ["userB"],
             committers: ["userB"],
             owners: ["userA", "userB"],
-            expect: ["userB"]
+            expect: ["userB"],
         },
         {
             name: "one owner other committed",
@@ -50,7 +50,7 @@ describe("Require approves per modules", () => {
             rejecters: [],
             committers: ["userX"],
             owners: ["userA"],
-            expect: "empty"
+            expect: "empty",
         },
         {
             name: "one owner other committed",
@@ -58,7 +58,7 @@ describe("Require approves per modules", () => {
             rejecters: [],
             committers: ["userX"],
             owners: ["userA"],
-            expect: "empty"
+            expect: "empty",
         },
         {
             name: "one owner who committed",
@@ -66,7 +66,7 @@ describe("Require approves per modules", () => {
             rejecters: [],
             committers: ["userA"],
             owners: ["userA"],
-            expect: "anyone"
+            expect: "anyone",
         },
         {
             name: "no owner committer approve",
@@ -74,7 +74,7 @@ describe("Require approves per modules", () => {
             rejecters: [],
             committers: ["userA"],
             owners: "anyone",
-            expect: "anyone"
+            expect: "anyone",
         },
         {
             name: "no owner committer reject",
@@ -82,15 +82,13 @@ describe("Require approves per modules", () => {
             rejecters: ["userA"],
             committers: ["userA"],
             owners: "anyone",
-            expect: ["userA"]
+            expect: ["userA"],
         },
     ];
-    testCases.forEach(tc => {
+    testCases.forEach((tc) => {
         it(tc.name, () => {
             const moduleName = "module";
-            const owners = tc.owners === "anyone"
-                ? { kind: OwnersManager_1.OwnersKind.anyone }
-                : { kind: OwnersManager_1.OwnersKind.list, list: tc.owners };
+            const owners = tc.owners === "anyone" ? { kind: OwnersManager_1.OwnersKind.anyone } : { kind: OwnersManager_1.OwnersKind.list, list: tc.owners };
             const result = index_1.calculateRequireApprovePerModules(new Set(tc.approvers), new Set(tc.rejecters), new Set(tc.committers), new Map([[moduleName, owners]]));
             if (tc.expect === "empty") {
                 expect(result.size).toBe(0);
@@ -107,7 +105,7 @@ describe("Require approves per modules", () => {
             else {
                 const requiredApproves = result.get(moduleName);
                 if (requiredApproves != null && requiredApproves.kind === OwnersManager_1.OwnersKind.list) {
-                    expect(requiredApproves.list.every(a => tc.expect.indexOf(a) > -1)).toBe(true);
+                    expect(requiredApproves.list.every((a) => tc.expect.indexOf(a) > -1)).toBe(true);
                 }
                 else {
                     fail("module not exist");
