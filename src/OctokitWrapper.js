@@ -86,6 +86,7 @@ class OctokitWrapper {
             repo: this.repo,
             sha: this.headCommitSha,
             state: state,
+            context: "code change manager"
         });
     }
 }
