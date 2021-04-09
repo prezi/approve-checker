@@ -587,8 +587,8 @@ describe("Test the full flow", () => {
 		it(tc.name, async () => {
 			const om = new OctokitMock(tc.initialData);
 			expect(om.getStatus()).toBe("nothing");
-			await doApproverCheckLogic(om as any, tc.initialData.headCommitSha, new SimpleCommentFormatter());
-			expect(om.getStatus()).toBe(tc.expect.status);
+			const status = await doApproverCheckLogic(om as any, tc.initialData.headCommitSha, new SimpleCommentFormatter());
+			expect(status).toBe(tc.expect.status);
 			if (tc.expect.comment != "") {
 				expect(om.getComment()).toBe(tc.expect.comment);
 			}

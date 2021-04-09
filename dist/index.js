@@ -6211,6 +6211,7 @@ async function doApproverCheckLogic(octokit, headCommitSha, commentFormatter) {
     const committers = await collectCommitters(octokit);
     const requireApproveModules = calculateRequireApprovePerModules(approvers, rejecters, committers, moduleOwnersMap);
     let comment = "";
+    let status;
     if (requireApproveModules.size > 0) {
         const pathUserData = [];
         requireApproveModules.forEach((value, key) => {
@@ -6220,13 +6221,16 @@ async function doApproverCheckLogic(octokit, headCommitSha, commentFormatter) {
             }
         });
         comment = commentFormatter.format(pathUserData);
-        await octokit.updateStatus("failure");
+        status = "failure";
+        // await octokit.updateStatus("failure");
     }
     else {
-        await octokit.updateStatus("success");
+        // await octokit.updateStatus("success");
+        status = "success";
         comment = "No more approvals are needed";
     }
     await updateComment(octokit, comment);
+    return status;
 }
 exports.doApproverCheckLogic = doApproverCheckLogic;
 const run = async () => {
@@ -6237,7 +6241,8 @@ const run = async () => {
         const token = core.getInput("myToken");
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
         const octokit = new OctokitWrapper_1.OctokitWrapper(owner, repo, prNum, headCommitSha, token);
-        await doApproverCheckLogic(octokit, headCommitSha, new CommentFormatter_1.TableCommentFormatter());
+        const status = await doApproverCheckLogic(octokit, headCommitSha, new CommentFormatter_1.TableCommentFormatter());
+        process.exit(status === "failure" ? 1 : 0);
     }
     catch (error) {
         core.setFailed(error.message);
