@@ -162,7 +162,6 @@ export async function doApproverCheckLogic(
 		requireApproveModules.forEach((value, key) => {
 			if (value != null) {
 				pathUserData.push({path: key, users: value.kind === OwnersKind.list ? value.list : ["anyone"]});
-				// comment += `- ${key}: ${value.kind === OwnersKind.list ? value.list : "anyone"}\n`;
 			}
 		});
 		comment = commentFormatter.format(pathUserData);
@@ -187,8 +186,7 @@ const run = async (): Promise<void> => {
 		const headCommitSha =
 			github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
 		const octokit = new OctokitWrapper(owner, repo, prNum, headCommitSha, token);
-		const status = await doApproverCheckLogic(octokit, headCommitSha, new TableCommentFormatter());
-		process.exit(status === "failure" ? 1 : 0)
+		await doApproverCheckLogic(octokit, headCommitSha, new TableCommentFormatter());
 	} catch (error) {
 		core.setFailed(error.message);
 	}
