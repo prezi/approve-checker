@@ -168,10 +168,10 @@ export async function doApproverCheckLogic(
 		comment = commentFormatter.format(pathUserData);
 
 		status = "failure";
-		// await octokit.updateStatus("failure");
+		await octokit.updateStatus(status);
 	} else {
-		// await octokit.updateStatus("success");
 		status = "success";
+		await octokit.updateStatus(status);
 		comment = "No more approvals are needed";
 	}
 	await updateComment(octokit, comment);
