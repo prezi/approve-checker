@@ -26,7 +26,7 @@ var OwnersKind;
     OwnersKind["anyone"] = "anyone";
     OwnersKind["list"] = "list";
 })(OwnersKind = exports.OwnersKind || (exports.OwnersKind = {}));
-const ownersfile = "OWNERS";
+const ownersfile = "OWNERSFILE";
 class OwnersManager {
     constructor(octokit) {
         this.octokit = octokit;

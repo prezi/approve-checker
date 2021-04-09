@@ -5844,7 +5844,7 @@ exports.SimpleCommentFormatter = SimpleCommentFormatter;
 class TableCommentFormatter {
     format(data) {
         const header = "|modules|owners|\n|---|---|\n";
-        const content = data.reduce((prev, curr) => prev + `| ${curr.path} | ${curr.users.reduce((prev, curr) => prev + '<br>' + curr)} |\n`, "");
+        const content = data.reduce((prev, curr) => prev + `| ${curr.path} | ${curr.users.reduce((prev, curr) => prev + "<br>" + curr)} |\n`, "");
         return header + content;
     }
 }
@@ -5906,7 +5906,7 @@ class OctokitWrapper {
         return this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", {
             owner: this.owner,
             repo: this.repo,
-            pull_number: +this.prNum
+            pull_number: +this.prNum,
         });
     }
     updateComment(commentId, message) {
@@ -5985,7 +5985,7 @@ var OwnersKind;
     OwnersKind["anyone"] = "anyone";
     OwnersKind["list"] = "list";
 })(OwnersKind = exports.OwnersKind || (exports.OwnersKind = {}));
-const ownersfile = "OWNERS";
+const ownersfile = "OWNERSFILE";
 class OwnersManager {
     constructor(octokit) {
         this.octokit = octokit;
@@ -6029,9 +6029,10 @@ class OwnersManager {
         try {
             const ownersResponse = await this.octokit.getFileContent(path);
             const buff = Buffer.from(ownersResponse.data.content, "base64");
-            const list = buff.toString("ascii")
+            const list = buff
+                .toString("ascii")
                 .split("\n")
-                .filter(line => line !== "" && !line.startsWith("#"));
+                .filter((line) => line !== "" && !line.startsWith("#"));
             this.saveListInCache(path, origPath, list);
             return { owners: list, path };
         }
@@ -6088,12 +6089,13 @@ async function collectApprovers(octokit, headCommitSha) {
     const reviews = await octokit.getReviews();
     const approvers = new Set();
     const rejecters = new Set();
-    reviews.data.forEach(review => {
+    reviews.data.forEach((review) => {
         const user = review.user;
         if (user != null) {
             const key = user.login;
-            if ((review.commit_id === headCommitSha) &&
-                (review.state === "APPROVED" || (review.state === "COMMENTED" && review.body.toLowerCase().startsWith("approved")))) {
+            if (review.commit_id === headCommitSha &&
+                (review.state === "APPROVED" ||
+                    (review.state === "COMMENTED" && review.body.toLowerCase().startsWith("approved")))) {
                 approvers.add(key);
                 rejecters.delete(key);
             }
@@ -6120,7 +6122,7 @@ async function updateComment(octokit, messageBody) {
 async function collectCommitters(octokit) {
     const commits = await octokit.getCommits();
     const committers = new Set();
-    commits.data.forEach(commit => {
+    commits.data.forEach((commit) => {
         if (commit.author != null) {
             committers.add(commit.author.login);
         }
@@ -6137,9 +6139,9 @@ function calculateRequireApprovePerModules(approvers, rejecters, committers, mod
     const requireApproveModules = new Map();
     moduleOwnersMap.forEach((value, key) => {
         if (value.kind === OwnersManager_1.OwnersKind.list) {
-            const approversOfModule = value.list.filter(owner => approvers.has(owner));
-            const nonCommiterApproversOfModule = approversOfModule.filter(a => !committers.has(a));
-            const rejecterOfModule = value.list.filter(owner => rejecters.has(owner));
+            const approversOfModule = value.list.filter((owner) => approvers.has(owner));
+            const nonCommiterApproversOfModule = approversOfModule.filter((a) => !committers.has(a));
+            const rejecterOfModule = value.list.filter((owner) => rejecters.has(owner));
             let approveState;
             let needMoreApprove = false;
             if (nonCommiterApproversOfModule.length > 0 || approversOfModule.length > 1) {
@@ -6158,7 +6160,7 @@ function calculateRequireApprovePerModules(approvers, rejecters, committers, mod
             }
             else if (approveState === ApproveState.oneCommitter) {
                 needMoreApprove = true;
-                requireApproval = value.list.filter(v => v !== approversOfModule[0]);
+                requireApproval = value.list.filter((v) => v !== approversOfModule[0]);
             }
             if (rejecterOfModule.length > 0) {
                 needMoreApprove = true;
@@ -6167,7 +6169,10 @@ function calculateRequireApprovePerModules(approvers, rejecters, committers, mod
                         requireApproval = rejecterOfModule;
                     }
                     else {
-                        requireApproval = [...requireApproval.filter(v => v !== rejecterOfModule[0]), rejecterOfModule[0]];
+                        requireApproval = [
+                            ...requireApproval.filter((v) => v !== rejecterOfModule[0]),
+                            rejecterOfModule[0],
+                        ];
                     }
                 }
                 else {
@@ -6175,7 +6180,9 @@ function calculateRequireApprovePerModules(approvers, rejecters, committers, mod
                 }
             }
             if (needMoreApprove) {
-                requireApproveModules.set(key, requireApproval.length > 0 ? { kind: OwnersManager_1.OwnersKind.list, list: requireApproval } : { kind: OwnersManager_1.OwnersKind.anyone });
+                requireApproveModules.set(key, requireApproval.length > 0
+                    ? { kind: OwnersManager_1.OwnersKind.list, list: requireApproval }
+                    : { kind: OwnersManager_1.OwnersKind.anyone });
             }
         }
         else if (value.kind === OwnersManager_1.OwnersKind.anyone) {
@@ -6183,7 +6190,7 @@ function calculateRequireApprovePerModules(approvers, rejecters, committers, mod
                 requireApproveModules.set(key, { kind: OwnersManager_1.OwnersKind.list, list: [...rejecters] });
             }
             else if (approvers.size < 2) {
-                if ((approvers.size === 0) || (approvers.size === 1 && committers.has([...approvers][0]))) {
+                if (approvers.size === 0 || (approvers.size === 1 && committers.has([...approvers][0]))) {
                     requireApproveModules.set(key, { kind: OwnersManager_1.OwnersKind.anyone });
                 }
             }

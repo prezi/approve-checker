@@ -31,7 +31,7 @@ interface OwnersData {
 	path: string;
 }
 
-const ownersfile = "OWNERS";
+const ownersfile = "OWNERSFILE";
 
 export class OwnersManager {
 	private pathOwnersCache: Map<string, OwnersData>;

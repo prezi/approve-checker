@@ -56,8 +56,8 @@ const noOwner: Owners = {
 
 const Test1: TestMockSetup = {
 	ownersfileData: new Map<string, OwnerResult>([
-		["OWNERS", {data: {content: userABase64}}],
-		["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+		["OWNERSFILE", {data: {content: userABase64}}],
+		["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
 	]),
 	approvers: noApprovers,
 	changedFiles: noFiles,
@@ -65,7 +65,7 @@ const Test1: TestMockSetup = {
 };
 
 const Test2: TestMockSetup = {
-	ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+	ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 	approvers: noApprovers,
 	changedFiles: noFiles,
 	headCommitSha: "",
@@ -249,8 +249,8 @@ describe("Test the full flow", () => {
 			name: "one approve",
 			initialData: {
 				ownersfileData: new Map<string, OwnerResult>([
-					["OWNERS", {data: {content: userABase64}}],
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+					["OWNERSFILE", {data: {content: userABase64}}],
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}]},
 				approvers: {data: [{user: {login: userA}, state: "APPROVED", commit_id: "1"}]},
@@ -266,8 +266,8 @@ describe("Test the full flow", () => {
 			name: "one approve is missing",
 			initialData: {
 				ownersfileData: new Map<string, OwnerResult>([
-					["OWNERS", {data: {content: userABase64}}],
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+					["OWNERSFILE", {data: {content: userABase64}}],
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: [{user: {login: userB}, state: "APPROVED", commit_id: "1"}]},
@@ -283,8 +283,8 @@ describe("Test the full flow", () => {
 			name: "no approve - one file changed",
 			initialData: {
 				ownersfileData: new Map<string, OwnerResult>([
-					["OWNERS", {data: {content: userABase64}}],
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+					["OWNERSFILE", {data: {content: userABase64}}],
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}]},
 				approvers: {data: []},
@@ -300,8 +300,8 @@ describe("Test the full flow", () => {
 			name: "no approve - two files changed",
 			initialData: {
 				ownersfileData: new Map<string, OwnerResult>([
-					["OWNERS", {data: {content: userABase64}}],
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+					["OWNERSFILE", {data: {content: userABase64}}],
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: []},
@@ -320,8 +320,8 @@ describe("Test the full flow", () => {
 			name: "approver approved then requested change",
 			initialData: {
 				ownersfileData: new Map<string, OwnerResult>([
-					["OWNERS", {data: {content: userABase64}}],
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+					["OWNERSFILE", {data: {content: userABase64}}],
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}]},
 				approvers: {
@@ -342,8 +342,8 @@ describe("Test the full flow", () => {
 			name: "approver approved then requested change then approved again",
 			initialData: {
 				ownersfileData: new Map<string, OwnerResult>([
-					["OWNERS", {data: {content: userABase64}}],
-					["moduleA/OWNERS", {data: {content: userAuserBBase64}}],
+					["OWNERSFILE", {data: {content: userABase64}}],
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}]},
 				approvers: {
@@ -364,7 +364,7 @@ describe("Test the full flow", () => {
 		{
 			name: "One module has no Owners file - no approve at all",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: []},
 				headCommitSha: "1",
@@ -381,7 +381,7 @@ describe("Test the full flow", () => {
 		{
 			name: "One module has no Owners file - approve comes from other module",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: [{user: {login: userB}, state: "APPROVED", commit_id: "1"}]},
 				headCommitSha: "1",
@@ -395,7 +395,7 @@ describe("Test the full flow", () => {
 		{
 			name: "One module has no Owners file - multiple changes - third user approved",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: [{user: {login: userNotInOwnersfile}, state: "APPROVED", commit_id: "1"}]},
 				headCommitSha: "1",
@@ -409,7 +409,7 @@ describe("Test the full flow", () => {
 		{
 			name: "One moudle has no Owners file - change from that module - third user approved",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "index.js"}]},
 				approvers: {data: [{user: {login: userNotInOwnersfile}, state: "APPROVED", commit_id: "1"}]},
 				headCommitSha: "1",
@@ -423,7 +423,7 @@ describe("Test the full flow", () => {
 		{
 			name: "One moudle has no Owners file - third user requested change",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "index.js"}, {filename: "moduleA/index.js"}]},
 				approvers: {
 					data: [
@@ -443,8 +443,8 @@ describe("Test the full flow", () => {
 			name: "Non owner approval doesn't count",
 			initialData: {
 				ownersfileData: new Map<string, OwnerResult>([
-					["moduleA/OWNERS", {data: {content: userABase64}}],
-					["./OWNERS", {data: {content: userAuserBBase64}}],
+					["moduleA/OWNERSFILE", {data: {content: userABase64}}],
+					["./OWNERSFILE", {data: {content: userAuserBBase64}}],
 				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}]},
 				approvers: {data: [{user: {login: userB}, state: "APPROVED", commit_id: "1"}]},
@@ -459,7 +459,7 @@ describe("Test the full flow", () => {
 		{
 			name: "Two rejecters",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["./OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["./OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "index.js"}]},
 				approvers: {
 					data: [
@@ -478,7 +478,7 @@ describe("Test the full flow", () => {
 		{
 			name: "Two rejecter then one approver",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["./OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["./OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "index.js"}]},
 				approvers: {
 					data: [
@@ -498,7 +498,7 @@ describe("Test the full flow", () => {
 		{
 			name: "Two rejecter then two approver",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["./OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["./OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "index.js"}]},
 				approvers: {
 					data: [
@@ -519,7 +519,7 @@ describe("Test the full flow", () => {
 		{
 			name: "New commit after approve",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "index.js"}]},
 				approvers: {data: [{user: {login: userA}, state: "APPROVED", commit_id: "1"}]},
 				headCommitSha: "2",
@@ -533,7 +533,7 @@ describe("Test the full flow", () => {
 		{
 			name: "New commit after approve different user approves next",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "index.js"}]},
 				approvers: {
 					data: [
@@ -552,7 +552,7 @@ describe("Test the full flow", () => {
 		{
 			name: "Request change then commit then other user approved",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "index.js"}]},
 				approvers: {
 					data: [
@@ -571,7 +571,7 @@ describe("Test the full flow", () => {
 		{
 			name: "Approved comment also approves",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["OWNERS", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([["OWNERSFILE", {data: {content: userAuserBBase64}}]]),
 				changedFiles: {data: [{filename: "index.js"}]},
 				approvers: {data: [{user: {login: userB}, state: "COMMENTED", commit_id: "2", body: "approved"}]},
 				headCommitSha: "2",
