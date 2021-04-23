@@ -1,0 +1,11 @@
+name: check-changed-files
+on: [pull_request, pull_request_review]
+jobs:
+  test-mergability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: prezi/approve-checker@master
+        with:
+          repository: ${{ github.repository }}
+          pr-number: ${{ github.event.pull_request.number }}
+          myToken: ${{ secrets.GITHUB_TOKEN }}
