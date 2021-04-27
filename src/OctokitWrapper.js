@@ -22,11 +22,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OctokitWrapper = void 0;
 const github = __importStar(require("@actions/github"));
 class OctokitWrapper {
-    constructor(owner, repo, prNum, headCommitSha, token) {
+    constructor(owner, repo, prNum, headCommitSha, baseRef, token) {
         this.owner = owner;
         this.repo = repo;
         this.prNum = prNum;
         this.headCommitSha = headCommitSha;
+        this.baseRef = baseRef;
         this.octokit = github.getOctokit(token);
     }
     getReviews() {
@@ -78,6 +79,7 @@ class OctokitWrapper {
             owner: this.owner,
             repo: this.repo,
             path: path,
+            ref: this.baseRef
         });
     }
     updateStatus(state) {

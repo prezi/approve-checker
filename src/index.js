@@ -179,7 +179,8 @@ const run = async () => {
         const prNum = core.getInput("pr-number");
         const token = core.getInput("myToken");
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
-        const octokit = new OctokitWrapper_1.OctokitWrapper(owner, repo, prNum, headCommitSha, token);
+        const baseRef = github.context.payload.pull_request != null ? github.context.payload.pull_request.base.ref : null;
+        const octokit = new OctokitWrapper_1.OctokitWrapper(owner, repo, prNum, headCommitSha, baseRef, token);
         await doApproverCheckLogic(octokit, headCommitSha, new CommentFormatter_1.TableCommentFormatter());
     }
     catch (error) {

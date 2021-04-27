@@ -5881,11 +5881,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.OctokitWrapper = void 0;
 const github = __importStar(__nccwpck_require__(94));
 class OctokitWrapper {
-    constructor(owner, repo, prNum, headCommitSha, token) {
+    constructor(owner, repo, prNum, headCommitSha, baseRef, token) {
         this.owner = owner;
         this.repo = repo;
         this.prNum = prNum;
         this.headCommitSha = headCommitSha;
+        this.baseRef = baseRef;
         this.octokit = github.getOctokit(token);
     }
     getReviews() {
@@ -5937,6 +5938,7 @@ class OctokitWrapper {
             owner: this.owner,
             repo: this.repo,
             path: path,
+            ref: this.baseRef
         });
     }
     updateStatus(state) {
@@ -6240,7 +6242,8 @@ const run = async () => {
         const prNum = core.getInput("pr-number");
         const token = core.getInput("myToken");
         const headCommitSha = github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
-        const octokit = new OctokitWrapper_1.OctokitWrapper(owner, repo, prNum, headCommitSha, token);
+        const baseRef = github.context.payload.pull_request != null ? github.context.payload.pull_request.base.ref : null;
+        const octokit = new OctokitWrapper_1.OctokitWrapper(owner, repo, prNum, headCommitSha, baseRef, token);
         await doApproverCheckLogic(octokit, headCommitSha, new CommentFormatter_1.TableCommentFormatter());
     }
     catch (error) {

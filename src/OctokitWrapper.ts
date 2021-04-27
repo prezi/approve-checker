@@ -8,6 +8,7 @@ export class OctokitWrapper {
 		private repo: string,
 		private prNum: string,
 		private headCommitSha: string,
+		private baseRef: string,
 		token: string,
 	) {
 		this.octokit = github.getOctokit(token);
@@ -68,6 +69,7 @@ export class OctokitWrapper {
 			owner: this.owner,
 			repo: this.repo,
 			path: path,
+			ref: this.baseRef,
 		});
 	}
 
@@ -77,7 +79,7 @@ export class OctokitWrapper {
 			repo: this.repo,
 			sha: this.headCommitSha,
 			state: state,
-			context: "code change manager"
+			context: "code change manager",
 		});
 	}
 }

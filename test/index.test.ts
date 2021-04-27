@@ -364,7 +364,9 @@ describe("Test the full flow", () => {
 		{
 			name: "One module has no Owners file - no approve at all",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
+				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: []},
 				headCommitSha: "1",
@@ -381,7 +383,9 @@ describe("Test the full flow", () => {
 		{
 			name: "One module has no Owners file - approve comes from other module",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
+				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: [{user: {login: userB}, state: "APPROVED", commit_id: "1"}]},
 				headCommitSha: "1",
@@ -395,7 +399,9 @@ describe("Test the full flow", () => {
 		{
 			name: "One module has no Owners file - multiple changes - third user approved",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
+				]),
 				changedFiles: {data: [{filename: "moduleA/index.js"}, {filename: "index.js"}]},
 				approvers: {data: [{user: {login: userNotInOwnersfile}, state: "APPROVED", commit_id: "1"}]},
 				headCommitSha: "1",
@@ -409,7 +415,9 @@ describe("Test the full flow", () => {
 		{
 			name: "One moudle has no Owners file - change from that module - third user approved",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
+				]),
 				changedFiles: {data: [{filename: "index.js"}]},
 				approvers: {data: [{user: {login: userNotInOwnersfile}, state: "APPROVED", commit_id: "1"}]},
 				headCommitSha: "1",
@@ -423,7 +431,9 @@ describe("Test the full flow", () => {
 		{
 			name: "One moudle has no Owners file - third user requested change",
 			initialData: {
-				ownersfileData: new Map<string, OwnerResult>([["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}]]),
+				ownersfileData: new Map<string, OwnerResult>([
+					["moduleA/OWNERSFILE", {data: {content: userAuserBBase64}}],
+				]),
 				changedFiles: {data: [{filename: "index.js"}, {filename: "moduleA/index.js"}]},
 				approvers: {
 					data: [
@@ -587,7 +597,11 @@ describe("Test the full flow", () => {
 		it(tc.name, async () => {
 			const om = new OctokitMock(tc.initialData);
 			expect(om.getStatus()).toBe("nothing");
-			const status = await doApproverCheckLogic(om as any, tc.initialData.headCommitSha, new SimpleCommentFormatter());
+			const status = await doApproverCheckLogic(
+				om as any,
+				tc.initialData.headCommitSha,
+				new SimpleCommentFormatter(),
+			);
 			expect(status).toBe(tc.expect.status);
 			if (tc.expect.comment != "") {
 				expect(om.getComment()).toBe(tc.expect.comment);
