@@ -138,7 +138,7 @@ export async function doApproverCheckLogic(
 	octokit: OctokitWrapper,
 	headCommitSha: string,
 	commentFormatter: CommentFormatter,
-): Promise<"failure" | "success">  {
+): Promise<"failure" | "success"> {
 	const ownersManager = new OwnersManager(octokit);
 
 	const files = await octokit.getFiles();
@@ -185,7 +185,9 @@ const run = async (): Promise<void> => {
 		const token = core.getInput("myToken");
 		const headCommitSha =
 			github.context.payload.pull_request != null ? github.context.payload.pull_request.head.sha : null;
-		const octokit = new OctokitWrapper(owner, repo, prNum, headCommitSha, token);
+		const baseRef =
+			github.context.payload.pull_request != null ? github.context.payload.pull_request.base.ref : null;
+		const octokit = new OctokitWrapper(owner, repo, prNum, headCommitSha, baseRef, token);
 		await doApproverCheckLogic(octokit, headCommitSha, new TableCommentFormatter());
 	} catch (error) {
 		core.setFailed(error.message);
