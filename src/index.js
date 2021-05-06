@@ -143,7 +143,7 @@ async function doApproverCheckLogic(octokit, headCommitSha, commentFormatter) {
     const ownersManager = new OwnersManager_1.OwnersManager(octokit);
     const files = await octokit.getFiles();
     const moduleOwnersMap = new Map();
-    for (const r of files.data) {
+    for (const r of files) {
         const result = await ownersManager.collectOwners(r.filename);
         moduleOwnersMap.set(result.path, result.owners);
     }

@@ -1,6 +1,10 @@
 import * as github from "@actions/github";
 import {GitHub} from "@actions/github/lib/utils";
 
+export interface FileData {
+	filename: string;
+}
+
 export class OctokitWrapper {
 	private octokit: InstanceType<typeof GitHub>;
 	public constructor(
@@ -56,11 +60,25 @@ export class OctokitWrapper {
 		});
 	}
 
-	public getFiles() {
+	public async getFiles() {
+		let pageIdx = 1;
+		let part = await this.getFilePage(pageIdx);
+		let result: FileData[] = [];
+		while (part.data.lenght !== 0) {
+			result = [...result, ...part.data];
+			++pageIdx;
+			part = await this.getFilePage(pageIdx);
+		}
+
+		return result;
+	}
+
+	private getFilePage(pageIdx: number) {
 		return this.octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
 			owner: this.owner,
 			repo: this.repo,
 			pull_number: this.prNum,
+			page: pageIdx,
 		});
 	}
 

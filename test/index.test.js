@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const OwnersManager_1 = require("../src/OwnersManager");
 const index_1 = require("../src/index");
 const CommentFormatter_1 = require("../src/CommentFormatter");
-const noFiles = { data: [] };
 const noApprovers = { data: [] };
 const userA = "userA";
 const userABase64 = "dXNlckE=";
@@ -27,13 +26,13 @@ const Test1 = {
         ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
     ]),
     approvers: noApprovers,
-    changedFiles: noFiles,
+    changedFiles: [],
     headCommitSha: "",
 };
 const Test2 = {
     ownersfileData: new Map([["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
     approvers: noApprovers,
-    changedFiles: noFiles,
+    changedFiles: [],
     headCommitSha: "",
 };
 class OctokitMock {
@@ -144,7 +143,7 @@ describe("Test ownersfile lookup", () => {
     it("No owners at all", async () => {
         const octokitMock = new OctokitMock({
             approvers: noApprovers,
-            changedFiles: noFiles,
+            changedFiles: [],
             ownersfileData: new Map(),
             headCommitSha: "",
         });
@@ -187,7 +186,7 @@ describe("Test the full flow", () => {
                     ["OWNERSFILE", { data: { content: userABase64 } }],
                     ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
                 ]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }] },
+                changedFiles: [{ filename: "moduleA/index.js" }],
                 approvers: { data: [{ user: { login: userA }, state: "APPROVED", commit_id: "1" }] },
                 headCommitSha: "1",
             },
@@ -203,7 +202,7 @@ describe("Test the full flow", () => {
                     ["OWNERSFILE", { data: { content: userABase64 } }],
                     ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
                 ]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }, { filename: "index.js" }] },
+                changedFiles: [{ filename: "moduleA/index.js" }, { filename: "index.js" }],
                 approvers: { data: [{ user: { login: userB }, state: "APPROVED", commit_id: "1" }] },
                 headCommitSha: "1",
             },
@@ -219,7 +218,7 @@ describe("Test the full flow", () => {
                     ["OWNERSFILE", { data: { content: userABase64 } }],
                     ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
                 ]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }] },
+                changedFiles: [{ filename: "moduleA/index.js" }],
                 approvers: { data: [] },
                 headCommitSha: "1",
             },
@@ -235,7 +234,7 @@ describe("Test the full flow", () => {
                     ["OWNERSFILE", { data: { content: userABase64 } }],
                     ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
                 ]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }, { filename: "index.js" }] },
+                changedFiles: [{ filename: "moduleA/index.js" }, { filename: "index.js" }],
                 approvers: { data: [] },
                 headCommitSha: "1",
             },
@@ -254,7 +253,7 @@ describe("Test the full flow", () => {
                     ["OWNERSFILE", { data: { content: userABase64 } }],
                     ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
                 ]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }] },
+                changedFiles: [{ filename: "moduleA/index.js" }],
                 approvers: {
                     data: [
                         { user: { login: userB }, state: "APPROVED", commit_id: "1" },
@@ -275,7 +274,7 @@ describe("Test the full flow", () => {
                     ["OWNERSFILE", { data: { content: userABase64 } }],
                     ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
                 ]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }] },
+                changedFiles: [{ filename: "moduleA/index.js" }],
                 approvers: {
                     data: [
                         { user: { login: userB }, state: "APPROVED", commit_id: "1" },
@@ -293,8 +292,10 @@ describe("Test the full flow", () => {
         {
             name: "One module has no Owners file - no approve at all",
             initialData: {
-                ownersfileData: new Map([["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }, { filename: "index.js" }] },
+                ownersfileData: new Map([
+                    ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
+                ]),
+                changedFiles: [{ filename: "moduleA/index.js" }, { filename: "index.js" }],
                 approvers: { data: [] },
                 headCommitSha: "1",
             },
@@ -309,8 +310,10 @@ describe("Test the full flow", () => {
         {
             name: "One module has no Owners file - approve comes from other module",
             initialData: {
-                ownersfileData: new Map([["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }, { filename: "index.js" }] },
+                ownersfileData: new Map([
+                    ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
+                ]),
+                changedFiles: [{ filename: "moduleA/index.js" }, { filename: "index.js" }],
                 approvers: { data: [{ user: { login: userB }, state: "APPROVED", commit_id: "1" }] },
                 headCommitSha: "1",
             },
@@ -322,8 +325,10 @@ describe("Test the full flow", () => {
         {
             name: "One module has no Owners file - multiple changes - third user approved",
             initialData: {
-                ownersfileData: new Map([["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }, { filename: "index.js" }] },
+                ownersfileData: new Map([
+                    ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
+                ]),
+                changedFiles: [{ filename: "moduleA/index.js" }, { filename: "index.js" }],
                 approvers: { data: [{ user: { login: userNotInOwnersfile }, state: "APPROVED", commit_id: "1" }] },
                 headCommitSha: "1",
             },
@@ -335,8 +340,10 @@ describe("Test the full flow", () => {
         {
             name: "One moudle has no Owners file - change from that module - third user approved",
             initialData: {
-                ownersfileData: new Map([["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "index.js" }] },
+                ownersfileData: new Map([
+                    ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
+                ]),
+                changedFiles: [{ filename: "index.js" }],
                 approvers: { data: [{ user: { login: userNotInOwnersfile }, state: "APPROVED", commit_id: "1" }] },
                 headCommitSha: "1",
             },
@@ -348,8 +355,10 @@ describe("Test the full flow", () => {
         {
             name: "One moudle has no Owners file - third user requested change",
             initialData: {
-                ownersfileData: new Map([["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "index.js" }, { filename: "moduleA/index.js" }] },
+                ownersfileData: new Map([
+                    ["moduleA/OWNERSFILE", { data: { content: userAuserBBase64 } }],
+                ]),
+                changedFiles: [{ filename: "index.js" }, { filename: "moduleA/index.js" }],
                 approvers: {
                     data: [
                         { user: { login: userNotInOwnersfile }, state: "CHANGES_REQUESTED", commit_id: "1" },
@@ -370,7 +379,7 @@ describe("Test the full flow", () => {
                     ["moduleA/OWNERSFILE", { data: { content: userABase64 } }],
                     ["./OWNERSFILE", { data: { content: userAuserBBase64 } }],
                 ]),
-                changedFiles: { data: [{ filename: "moduleA/index.js" }] },
+                changedFiles: [{ filename: "moduleA/index.js" }],
                 approvers: { data: [{ user: { login: userB }, state: "APPROVED", commit_id: "1" }] },
                 headCommitSha: "1",
             },
@@ -383,7 +392,7 @@ describe("Test the full flow", () => {
             name: "Two rejecters",
             initialData: {
                 ownersfileData: new Map([["./OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "index.js" }] },
+                changedFiles: [{ filename: "index.js" }],
                 approvers: {
                     data: [
                         { user: { login: userA }, state: "CHANGES_REQUESTED", commit_id: "1" },
@@ -401,7 +410,7 @@ describe("Test the full flow", () => {
             name: "Two rejecter then one approver",
             initialData: {
                 ownersfileData: new Map([["./OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "index.js" }] },
+                changedFiles: [{ filename: "index.js" }],
                 approvers: {
                     data: [
                         { user: { login: userA }, state: "CHANGES_REQUESTED", commit_id: "1" },
@@ -420,7 +429,7 @@ describe("Test the full flow", () => {
             name: "Two rejecter then two approver",
             initialData: {
                 ownersfileData: new Map([["./OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "index.js" }] },
+                changedFiles: [{ filename: "index.js" }],
                 approvers: {
                     data: [
                         { user: { login: userA }, state: "CHANGES_REQUESTED", commit_id: "1" },
@@ -440,7 +449,7 @@ describe("Test the full flow", () => {
             name: "New commit after approve",
             initialData: {
                 ownersfileData: new Map([["OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "index.js" }] },
+                changedFiles: [{ filename: "index.js" }],
                 approvers: { data: [{ user: { login: userA }, state: "APPROVED", commit_id: "1" }] },
                 headCommitSha: "2",
             },
@@ -453,7 +462,7 @@ describe("Test the full flow", () => {
             name: "New commit after approve different user approves next",
             initialData: {
                 ownersfileData: new Map([["OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "index.js" }] },
+                changedFiles: [{ filename: "index.js" }],
                 approvers: {
                     data: [
                         { user: { login: userA }, state: "APPROVED", commit_id: "1" },
@@ -471,7 +480,7 @@ describe("Test the full flow", () => {
             name: "Request change then commit then other user approved",
             initialData: {
                 ownersfileData: new Map([["OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "index.js" }] },
+                changedFiles: [{ filename: "index.js" }],
                 approvers: {
                     data: [
                         { user: { login: userA }, state: "CHANGES_REQUESTED", commit_id: "1" },
@@ -489,7 +498,7 @@ describe("Test the full flow", () => {
             name: "Approved comment also approves",
             initialData: {
                 ownersfileData: new Map([["OWNERSFILE", { data: { content: userAuserBBase64 } }]]),
-                changedFiles: { data: [{ filename: "index.js" }] },
+                changedFiles: [{ filename: "index.js" }],
                 approvers: { data: [{ user: { login: userB }, state: "COMMENTED", commit_id: "2", body: "approved" }] },
                 headCommitSha: "2",
             },
