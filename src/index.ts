@@ -146,6 +146,7 @@ export async function doApproverCheckLogic(
 	const moduleOwnersMap = new Map<string, Owners>();
 
 	for (const r of files.data) {
+		console.log("xxx: ", r.filename);
 		const result = await ownersManager.collectOwners(r.filename);
 		moduleOwnersMap.set(result.path, result.owners);
 	}
