@@ -88,6 +88,7 @@ export class OwnersManager {
 			this.saveListInCache(path, origPath, list);
 			return {owners: list, path};
 		} catch (e) {
+			console.log("xxx ERROR: ", e)
 			return null;
 		}
 	}
