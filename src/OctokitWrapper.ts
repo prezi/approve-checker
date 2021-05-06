@@ -65,6 +65,7 @@ export class OctokitWrapper {
 		let part = await this.getFilePage(pageIdx);
 		let result: FileData[] = [];
 		while (part.data.lenght !== 0) {
+			console.log("xxx part.data.lenght: ", part.data.lenght)
 			result = [...result, ...part.data];
 			++pageIdx;
 			part = await this.getFilePage(pageIdx);
@@ -74,12 +75,16 @@ export class OctokitWrapper {
 	}
 
 	private getFilePage(pageIdx: number) {
-		return this.octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
+		const ret = this.octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
 			owner: this.owner,
 			repo: this.repo,
 			pull_number: this.prNum,
 			page: pageIdx,
 		});
+
+		console.log("xxx IDX: ", pageIdx);
+		console.log("xxx ret: ", ret);
+		return ret;
 	}
 
 	public getFileContent(path: string) {
