@@ -5931,7 +5931,6 @@ class OctokitWrapper {
         let part = await this.getFilePage(pageIdx);
         let result = [];
         while (part.data.length !== 0) {
-            console.log("xxx part.data.lenght: ", part.data.length);
             result = [...result, ...part.data];
             ++pageIdx;
             part = await this.getFilePage(pageIdx);
