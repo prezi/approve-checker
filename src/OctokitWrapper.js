@@ -67,11 +67,23 @@ class OctokitWrapper {
             body: message,
         });
     }
-    getFiles() {
+    async getFiles() {
+        let pageIdx = 1;
+        let part = await this.getFilePage(pageIdx);
+        let result = [];
+        while (part.data.length !== 0) {
+            result = [...result, ...part.data];
+            ++pageIdx;
+            part = await this.getFilePage(pageIdx);
+        }
+        return result;
+    }
+    getFilePage(pageIdx) {
         return this.octokit.request("GET https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files", {
             owner: this.owner,
             repo: this.repo,
             pull_number: this.prNum,
+            page: pageIdx,
         });
     }
     getFileContent(path) {
@@ -79,7 +91,7 @@ class OctokitWrapper {
             owner: this.owner,
             repo: this.repo,
             path: path,
-            ref: this.baseRef
+            ref: this.baseRef,
         });
     }
     updateStatus(state) {
@@ -88,7 +100,7 @@ class OctokitWrapper {
             repo: this.repo,
             sha: this.headCommitSha,
             state: state,
-            context: "code change manager"
+            context: "code change manager",
         });
     }
 }
